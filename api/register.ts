@@ -1,19 +1,14 @@
-import { hash } from 'bcryptjs';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { redis } from './redis';
+import bcrypt from 'bcryptjs';
 
-export default async function handler(req: Request) {
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
-  }
-  const { username, password } = await req.json();
-  if (!username || !password) {
-    return new Response(JSON.stringify({ error: 'Thiếu thông tin' }), { status: 400 });
-  }
-  const exists = await redis.hexists('users', username);
-  if (exists) {
-    return new Response(JSON.stringify({ error: 'Tên đã tồn tại' }), { status: 400 });
-  }
-  const hashed = await hash(password, 10);
-  await redis.hset('users', { [username]: hashed });
-  return new Response(JSON.stringify({ success: true }), { status: 200 });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') return res.status(405).end();
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Missing username or password' });
+  const exists = await redis.hget('users', username);
+  if (exists) return res.status(409).json({ error: 'Username already exists' });
+  const hash = await bcrypt.hash(password, 10);
+  await redis.hset('users', { [username]: JSON.stringify({ password: hash, score: 0, games: 0 }) });
+  res.status(201).json({ message: 'User registered' });
 } 
