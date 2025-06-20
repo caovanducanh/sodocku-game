@@ -16,6 +16,10 @@ function App() {
   const [score, setScore] = useState(0);
   const [maxHints, setMaxHints] = useState(3); // số lần hint tối đa
   const [showRules, setShowRules] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [user, setUser] = useState<{ username: string; token: string } | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const getBasePoint = (difficulty: Difficulty) => {
     switch (difficulty) {
@@ -335,6 +339,71 @@ function App() {
     } : null);
   }, [gameState]);
 
+  // Đọc token từ localStorage khi load app
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username');
+    if (token && username) setUser({ username, token });
+  }, []);
+
+  // Đăng ký
+  async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setAuthError(null);
+    const form = e.currentTarget;
+    const username = (form.elements.namedItem('username') as HTMLInputElement).value;
+    const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setAuthError(data.error || 'Đăng ký thất bại');
+        return;
+      }
+      setAuthMode('login');
+      setAuthError('Đăng ký thành công! Đăng nhập để tiếp tục.');
+    } catch {
+      setAuthError('Lỗi kết nối server');
+    }
+  }
+
+  // Đăng nhập
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setAuthError(null);
+    const form = e.currentTarget;
+    const username = (form.elements.namedItem('username') as HTMLInputElement).value;
+    const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || 'Đăng nhập thất bại');
+        return;
+      }
+      setUser({ username: data.username, token: data.token });
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('username', data.username);
+      setShowAuth(false);
+    } catch {
+      setAuthError('Lỗi kết nối server');
+    }
+  }
+
+  function handleLogout() {
+    setUser(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+  }
+
   if (showDifficultySelector) {
     return <DifficultySelector onStartGame={handleStartGame} />;
   }
@@ -470,6 +539,43 @@ function App() {
           </div>
         )}
       </div>
+      {/* Nút đăng nhập/đăng ký và popup */}
+      <div className="fixed top-2 right-2 z-50 flex gap-2">
+        {user ? (
+          <div className="flex items-center gap-2 bg-white/90 rounded-xl px-3 py-1 shadow border border-gray-200">
+            <span className="font-semibold text-purple-700">{user.username}</span>
+            <button onClick={handleLogout} className="text-xs text-red-500 font-bold hover:underline">Đăng xuất</button>
+          </div>
+        ) : (
+          <button onClick={() => { setShowAuth(true); setAuthMode('login'); }} className="bg-purple-600 text-white font-bold rounded-full shadow px-4 py-2 text-sm hover:bg-purple-700 transition-all">Đăng nhập / Đăng ký</button>
+        )}
+      </div>
+      {showAuth && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-xs relative animate-pop">
+            <button className="absolute top-2 right-2 text-xl font-bold text-gray-500 hover:text-gray-700" onClick={() => setShowAuth(false)}>&times;</button>
+            <div className="mb-4 flex gap-2 justify-center">
+              <button onClick={() => setAuthMode('login')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='login' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng nhập</button>
+              <button onClick={() => setAuthMode('register')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='register' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng ký</button>
+            </div>
+            {authMode === 'login' ? (
+              <form onSubmit={handleLogin} className="space-y-3">
+                <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
+                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
+                {authError && <div className="text-red-500 text-xs">{authError}</div>}
+                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng nhập</button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} className="space-y-3">
+                <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
+                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
+                {authError && <div className="text-red-500 text-xs">{authError}</div>}
+                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng ký</button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

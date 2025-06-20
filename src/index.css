@@ -24,3 +24,7 @@
 .animate-pop {
   animation: pop 0.3s cubic-bezier(.36,.07,.19,.97) both;
 }
+
+html, body, * {
+  cursor: auto !important;
+}
