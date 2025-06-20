@@ -6,6 +6,7 @@ import NumberPad from './components/NumberPad';
 import GameControls from './components/GameControls';
 import DifficultySelector from './components/DifficultySelector';
 import WinDialog from './components/WinDialog';
+import Leaderboard from './components/Leaderboard';
 
 function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -20,6 +21,9 @@ function App() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [user, setUser] = useState<{ username: string; token: string } | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [leaderboard, setLeaderboard] = useState<{ username: string; score: number }[]>([]);
+  const [userRank, setUserRank] = useState<{ rank: number; score: number } | null>(null);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
   const getBasePoint = (difficulty: Difficulty) => {
     switch (difficulty) {
@@ -346,6 +350,22 @@ function App() {
     if (token && username) setUser({ username, token });
   }, []);
 
+  // Lấy bảng xếp hạng khi showDifficultySelector
+  useEffect(() => {
+    if (!showDifficultySelector) return;
+    setLoadingLeaderboard(true);
+    const token = localStorage.getItem('token');
+    fetch('/api/leaderboard', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then(res => res.json())
+      .then(data => {
+        setLeaderboard(data.leaderboard || []);
+        setUserRank(data.user || null);
+      })
+      .finally(() => setLoadingLeaderboard(false));
+  }, [showDifficultySelector, user]);
+
   // Đăng ký
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -405,7 +425,59 @@ function App() {
   }
 
   if (showDifficultySelector) {
-    return <DifficultySelector onStartGame={handleStartGame} />;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-2xl mx-auto flex flex-col md:flex-row gap-8 items-start justify-center">
+          <div className="flex-1 w-full max-w-md">
+            <DifficultySelector onStartGame={handleStartGame} />
+          </div>
+          <div className="flex-1 w-full max-w-md mt-8 md:mt-0">
+            {loadingLeaderboard ? (
+              <div className="text-center text-gray-400 py-6">Đang tải bảng xếp hạng...</div>
+            ) : (
+              <Leaderboard leaderboard={leaderboard} userRank={userRank} />
+            )}
+          </div>
+        </div>
+        {/* Nút đăng nhập/đăng ký và popup */}
+        <div className="fixed top-2 right-2 z-50 flex gap-2">
+          {user ? (
+            <div className="flex items-center gap-2 bg-white/90 rounded-xl px-3 py-1 shadow border border-gray-200">
+              <span className="font-semibold text-purple-700">{user.username}</span>
+              <button onClick={handleLogout} className="text-xs text-red-500 font-bold hover:underline">Đăng xuất</button>
+            </div>
+          ) : (
+            <button onClick={() => { setShowAuth(true); setAuthMode('login'); }} className="bg-purple-600 text-white font-bold rounded-full shadow px-4 py-2 text-sm hover:bg-purple-700 transition-all">Đăng nhập / Đăng ký</button>
+          )}
+        </div>
+        {showAuth && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-xs relative animate-pop">
+              <button className="absolute top-2 right-2 text-xl font-bold text-gray-500 hover:text-gray-700" onClick={() => setShowAuth(false)}>&times;</button>
+              <div className="mb-4 flex gap-2 justify-center">
+                <button onClick={() => setAuthMode('login')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='login' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng nhập</button>
+                <button onClick={() => setAuthMode('register')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='register' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng ký</button>
+              </div>
+              {authMode === 'login' ? (
+                <form onSubmit={handleLogin} className="space-y-3">
+                  <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
+                  <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
+                  {authError && <div className="text-red-500 text-xs">{authError}</div>}
+                  <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng nhập</button>
+                </form>
+              ) : (
+                <form onSubmit={handleRegister} className="space-y-3">
+                  <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
+                  <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
+                  {authError && <div className="text-red-500 text-xs">{authError}</div>}
+                  <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng ký</button>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   if (!gameState) {
@@ -539,43 +611,6 @@ function App() {
           </div>
         )}
       </div>
-      {/* Nút đăng nhập/đăng ký và popup */}
-      <div className="fixed top-2 right-2 z-50 flex gap-2">
-        {user ? (
-          <div className="flex items-center gap-2 bg-white/90 rounded-xl px-3 py-1 shadow border border-gray-200">
-            <span className="font-semibold text-purple-700">{user.username}</span>
-            <button onClick={handleLogout} className="text-xs text-red-500 font-bold hover:underline">Đăng xuất</button>
-          </div>
-        ) : (
-          <button onClick={() => { setShowAuth(true); setAuthMode('login'); }} className="bg-purple-600 text-white font-bold rounded-full shadow px-4 py-2 text-sm hover:bg-purple-700 transition-all">Đăng nhập / Đăng ký</button>
-        )}
-      </div>
-      {showAuth && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-xs relative animate-pop">
-            <button className="absolute top-2 right-2 text-xl font-bold text-gray-500 hover:text-gray-700" onClick={() => setShowAuth(false)}>&times;</button>
-            <div className="mb-4 flex gap-2 justify-center">
-              <button onClick={() => setAuthMode('login')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='login' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng nhập</button>
-              <button onClick={() => setAuthMode('register')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='register' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng ký</button>
-            </div>
-            {authMode === 'login' ? (
-              <form onSubmit={handleLogin} className="space-y-3">
-                <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                {authError && <div className="text-red-500 text-xs">{authError}</div>}
-                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng nhập</button>
-              </form>
-            ) : (
-              <form onSubmit={handleRegister} className="space-y-3">
-                <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                {authError && <div className="text-red-500 text-xs">{authError}</div>}
-                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng ký</button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
