@@ -367,6 +367,16 @@ function App() {
       .finally(() => setLoadingLeaderboard(false));
   }, [showDifficultySelector, user, gameState?.isCompleted]);
 
+  // Gửi điểm lên server khi hoàn thành game
+  useEffect(() => {
+    if (!gameState?.isCompleted || !user) return;
+    fetch('/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: user.token, score }),
+    });
+  }, [gameState?.isCompleted, user, score]);
+
   // Đăng ký
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
