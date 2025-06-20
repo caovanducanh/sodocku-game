@@ -7,6 +7,8 @@ export interface SudokuCell {
   isHighlighted: boolean;
   isError: boolean;
   isSelected: boolean;
+  isShaking?: boolean;
+  isCorrect?: boolean;
 }
 
 export interface GameState {

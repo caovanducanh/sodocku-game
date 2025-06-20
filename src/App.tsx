@@ -12,6 +12,7 @@ function App() {
   const [showDifficultySelector, setShowDifficultySelector] = useState(true);
   const [sudokuGenerator] = useState(new SudokuGenerator());
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
+  const [points, setPoints] = useState(0);
 
   // Initialize a new game with random puzzle generation
   const initializeGame = useCallback((difficulty: Difficulty) => {
@@ -26,6 +27,8 @@ function App() {
         isHighlighted: false,
         isError: false,
         isSelected: false,
+        isShaking: false,
+        isCorrect: false,
       }))
     );
 
@@ -119,11 +122,9 @@ function App() {
 
     const { row, col } = gameState.selectedCell;
     const cell = gameState.grid[row][col];
-    
     if (cell.isGiven) return;
 
-    const newGrid = [...gameState.grid];
-    
+    const newGrid = gameState.grid.map(rowArr => rowArr.map(cell => ({ ...cell, isShaking: false, isCorrect: false })));
     if (gameState.isNotesMode) {
       // Toggle note
       const newNotes = new Set(cell.notes);
@@ -132,40 +133,65 @@ function App() {
       } else {
         newNotes.add(number);
       }
-      newGrid[row][col] = { ...cell, notes: newNotes };
-    } else {
-      // Place number
-      const isValid = sudokuGenerator.isValidMove(newGrid, row, col, number);
-      const isCorrect = gameState.solution[row][col] === number;
-      
+      newGrid[row][col] = { ...cell, notes: newNotes, isShaking: false, isCorrect: false };
+      setGameState(prev => prev ? { ...prev, grid: newGrid } : null);
+      return;
+    }
+    // Place number
+    const isValid = sudokuGenerator.isValidMove(newGrid, row, col, number);
+    const isCorrect = gameState.solution[row][col] === number;
+    let newMistakes = gameState.mistakes;
+    if (!isValid || !isCorrect) {
+      newMistakes++;
       newGrid[row][col] = {
         ...cell,
         value: number,
         notes: new Set(),
-        isError: !isValid || !isCorrect
+        isError: true,
+        isShaking: true,
+        isCorrect: false
       };
-
-      let newMistakes = gameState.mistakes;
-      if (!isValid || !isCorrect) {
-        newMistakes++;
-      }
-
-      const isCompleted = checkCompletion(newGrid.map(row => row.map(cell => cell.value)));
-      
+      setPoints(0); // reset điểm khi sai
       setGameState(prev => prev ? {
         ...prev,
         grid: updateHighlighting(newGrid, row, col),
         mistakes: newMistakes,
-        isCompleted
+        isCompleted: checkCompletion(newGrid.map(row => row.map(cell => cell.value)))
       } : null);
-      
+      setTimeout(() => {
+        setGameState(prev => {
+          if (!prev) return prev;
+          const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
+          gridCopy[row][col].isShaking = false;
+          return { ...prev, grid: gridCopy };
+        });
+      }, 400);
+      return;
+    } else {
+      newGrid[row][col] = {
+        ...cell,
+        value: number,
+        notes: new Set(),
+        isError: false,
+        isShaking: false,
+        isCorrect: true
+      };
+      setPoints(p => p + 1); // tăng điểm khi đúng
+      setGameState(prev => prev ? {
+        ...prev,
+        grid: updateHighlighting(newGrid, row, col),
+        isCompleted: checkCompletion(newGrid.map(row => row.map(cell => cell.value)))
+      } : null);
+      setTimeout(() => {
+        setGameState(prev => {
+          if (!prev) return prev;
+          const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
+          gridCopy[row][col].isCorrect = false;
+          return { ...prev, grid: gridCopy };
+        });
+      }, 300);
       return;
     }
-
-    setGameState(prev => prev ? {
-      ...prev,
-      grid: newGrid
-    } : null);
   }, [gameState, sudokuGenerator, checkCompletion, updateHighlighting]);
 
   // Handle erase
@@ -298,6 +324,7 @@ function App() {
             Sudoku Master
           </h1>
           <p className="text-gray-300 text-base sm:text-lg">Challenge your mind with beautiful puzzles</p>
+          <div className="mt-2 text-yellow-300 font-bold text-lg sm:text-xl">Liên tiếp đúng: {points}</div>
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-8">
           {/* Game Controls - Left Side */}

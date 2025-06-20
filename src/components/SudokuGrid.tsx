@@ -19,12 +19,12 @@ const SudokuGrid: React.FC<SudokuGridProps> = ({ grid, selectedCell, onCellClick
     if (col === 8) className += ' border-r-4 border-r-gray-800';
     
     // Cell states with beautiful colors
-    if (selectedCell?.row === row && selectedCell?.col === col) {
+    if (cell.isError) {
+      className += ' bg-gradient-to-br from-red-100 to-red-200 text-red-700 border-red-300';
+    } else if (selectedCell?.row === row && selectedCell?.col === col) {
       className += ' bg-gradient-to-br from-blue-400 to-blue-500 text-white shadow-xl scale-105 z-10 border-blue-600';
     } else if ((selectedNumber && cell.value === selectedNumber) || cell.isHighlighted) {
       className += ' bg-gradient-to-br from-yellow-100 to-yellow-200 border-yellow-400 shadow-md';
-    } else if (cell.isError) {
-      className += ' bg-gradient-to-br from-red-100 to-red-200 text-red-700 border-red-300';
     } else if (cell.isGiven) {
       className += ' bg-gradient-to-br from-gray-100 to-gray-200 text-gray-800 font-extrabold';
     } else {
@@ -55,11 +55,18 @@ const SudokuGrid: React.FC<SudokuGridProps> = ({ grid, selectedCell, onCellClick
           row.map((cell, colIndex) => (
             <button
               key={`${rowIndex}-${colIndex}`}
-              className={getCellClassName(rowIndex, colIndex, cell)}
+              className={
+                getCellClassName(rowIndex, colIndex, cell) +
+                (cell.isShaking ? ' animate-shake' : '') +
+                (cell.isCorrect ? ' animate-pop' : '')
+              }
               onClick={() => onCellClick(rowIndex, colIndex)}
             >
               {cell.value !== 0 ? (
-                <span className={`${cell.isGiven ? 'font-black' : 'font-bold'} drop-shadow-sm select-none`}>
+                <span className={
+                  `${cell.isGiven ? 'font-black' : 'font-bold'} drop-shadow-sm select-none ` +
+                  (cell.isError ? 'text-red-700' : '')
+                }>
                   {cell.value}
                 </span>
               ) : (
