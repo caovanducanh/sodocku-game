@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!token || typeof score !== 'number') return res.status(400).json({ error: 'Missing token or score' });
   let username = '';
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as any;
+    const payload = jwt.verify(token, JWT_SECRET) as { username: string };
     username = payload.username;
   } catch {
     return res.status(401).json({ error: 'Invalid token' });
@@ -21,5 +21,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   user.score = (user.score || 0) + score;
   user.games = (user.games || 0) + 1;
   await redis.hset('users', { [username]: JSON.stringify(user) });
+  await redis.zadd('leaderboard', { score: user.score, member: username });
   res.status(200).json({ message: 'Score updated', score: user.score, games: user.games });
 } 
