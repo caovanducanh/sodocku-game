@@ -15,6 +15,7 @@ function App() {
   const [points, setPoints] = useState(0);
   const [score, setScore] = useState(0);
   const [maxHints, setMaxHints] = useState(3); // số lần hint tối đa
+  const [showRules, setShowRules] = useState(false);
 
   const getBasePoint = (difficulty: Difficulty) => {
     switch (difficulty) {
@@ -424,6 +425,51 @@ function App() {
           onPlayAgain={handleRestart}
         />
       )}
+      {/* Nút và popup luật chơi */}
+      <div className="fixed bottom-2 right-2 z-50">
+        {!showRules ? (
+          <button
+            className="bg-purple-600 text-white font-bold rounded-full shadow-lg px-4 py-2 text-sm hover:bg-purple-700 transition-all"
+            onClick={() => setShowRules(true)}
+          >
+            Luật chơi
+          </button>
+        ) : (
+          <div className="max-w-xs w-[90vw] sm:w-80 bg-white/95 rounded-2xl shadow-2xl border border-gray-200 p-4 text-sm text-gray-700 select-none backdrop-blur-md relative animate-pop">
+            <button
+              className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-xl font-bold text-gray-700 shadow"
+              onClick={() => setShowRules(false)}
+              title="Thu nhỏ"
+            >
+              –
+            </button>
+            <div className="font-bold text-base text-purple-700 mb-2">Luật chơi & Tính điểm</div>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Điền đúng: <span className="text-green-600 font-semibold">+Điểm</span> = Điểm cơ bản × chuỗi đúng liên tiếp.</li>
+              <li>Điền sai: <span className="text-red-600 font-semibold">-Điểm</span> = Trừ điểm cơ bản (không âm).</li>
+              <li>Dùng Hint: <span className="text-yellow-600 font-semibold">Không cộng điểm</span>, số lần hint giới hạn theo độ khó.</li>
+            </ul>
+            <div className="mt-2 font-semibold text-gray-800">Điểm cơ bản theo độ khó:</div>
+            <table className="w-full text-xs mt-1 border border-gray-300 rounded overflow-hidden">
+              <thead>
+                <tr className="bg-purple-100">
+                  <th className="py-1 px-2 font-bold">Độ khó</th>
+                  <th className="py-1 px-2 font-bold">Điểm</th>
+                  <th className="py-1 px-2 font-bold">Hint</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="py-1 px-2">Easy</td><td className="py-1 px-2">10</td><td className="py-1 px-2">5</td></tr>
+                <tr><td className="py-1 px-2">Medium</td><td className="py-1 px-2">20</td><td className="py-1 px-2">4</td></tr>
+                <tr><td className="py-1 px-2">Hard</td><td className="py-1 px-2">30</td><td className="py-1 px-2">3</td></tr>
+                <tr><td className="py-1 px-2">Expert</td><td className="py-1 px-2">40</td><td className="py-1 px-2">2</td></tr>
+                <tr><td className="py-1 px-2">Master</td><td className="py-1 px-2">50</td><td className="py-1 px-2">1</td></tr>
+              </tbody>
+            </table>
+            <div className="mt-2 text-xs text-gray-500">* Chuỗi đúng liên tiếp càng dài, điểm càng cao!</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
