@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret';
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).end();
 
-  // Lấy top 10 từ sorted set leaderboard (dùng zrange với rev)
+  // Lấy top 10 từ sorted set leaderboard (dù điểm = 0)
   const top = await redis.zrange('leaderboard', 0, 9, { rev: true, withScores: true });
   // top: [username1, score1, username2, score2, ...]
   const leaderboard: { username: string; score: number }[] = [];

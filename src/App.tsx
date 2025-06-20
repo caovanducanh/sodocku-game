@@ -352,7 +352,8 @@ function App() {
 
   // Lấy bảng xếp hạng khi showDifficultySelector hoặc khi đang chơi game
   useEffect(() => {
-    if (!showDifficultySelector && !gameState) return;
+    // Chỉ fetch khi vào màn chọn độ khó hoặc khi vừa hoàn thành game
+    if (!showDifficultySelector && !(gameState && gameState.isCompleted)) return;
     setLoadingLeaderboard(true);
     const token = localStorage.getItem('token');
     fetch('/api/leaderboard', {
@@ -364,7 +365,7 @@ function App() {
         setUserRank(data.user || null);
       })
       .finally(() => setLoadingLeaderboard(false));
-  }, [showDifficultySelector, user, gameState]);
+  }, [showDifficultySelector, user, gameState?.isCompleted]);
 
   // Đăng ký
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
