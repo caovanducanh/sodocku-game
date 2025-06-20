@@ -5,6 +5,7 @@ interface GameControlsProps {
   elapsedTime: number;
   mistakes: number;
   hintsUsed: number;
+  maxHints?: number;
   isPaused: boolean;
   isCompleted: boolean;
   difficulty: string;
@@ -18,6 +19,7 @@ const GameControls: React.FC<GameControlsProps> = ({
   elapsedTime,
   mistakes,
   hintsUsed,
+  maxHints,
   isPaused,
   isCompleted,
   difficulty,
@@ -74,9 +76,9 @@ const GameControls: React.FC<GameControlsProps> = ({
         <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl sm:rounded-2xl p-2 sm:p-4 text-center border border-yellow-200">
           <Lightbulb className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600 mx-auto mb-1 sm:mb-2" />
           <div className="text-lg sm:text-2xl font-bold text-yellow-800">
-            {hintsUsed}
+            {maxHints !== undefined ? `${maxHints - hintsUsed}` : '-'}
           </div>
-          <div className="text-xs sm:text-sm text-yellow-600 font-medium">Hints</div>
+          <div className="text-xs sm:text-sm text-yellow-600 font-medium">Hints Left</div>
         </div>
       </div>
       
@@ -99,11 +101,13 @@ const GameControls: React.FC<GameControlsProps> = ({
         
         <button
           onClick={onHint}
-          disabled={isCompleted}
+          disabled={isCompleted || (maxHints !== undefined && hintsUsed >= maxHints)}
           className={`flex items-center justify-center gap-2 h-9 sm:h-12 rounded-xl sm:rounded-2xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg select-none ${
             isCompleted
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700 hover:shadow-xl'
+              : (maxHints !== undefined && hintsUsed >= maxHints)
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700 hover:shadow-xl'
           }`}
         >
           <Lightbulb size={20} />

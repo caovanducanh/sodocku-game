@@ -13,6 +13,30 @@ function App() {
   const [sudokuGenerator] = useState(new SudokuGenerator());
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
   const [points, setPoints] = useState(0);
+  const [score, setScore] = useState(0);
+  const [maxHints, setMaxHints] = useState(3); // số lần hint tối đa
+
+  const getBasePoint = (difficulty: Difficulty) => {
+    switch (difficulty) {
+      case 'easy': return 10;
+      case 'medium': return 20;
+      case 'hard': return 30;
+      case 'expert': return 40;
+      case 'master': return 50;
+      default: return 10;
+    }
+  };
+
+  const getMaxHints = (difficulty: Difficulty) => {
+    switch (difficulty) {
+      case 'easy': return 5;
+      case 'medium': return 4;
+      case 'hard': return 3;
+      case 'expert': return 2;
+      case 'master': return 1;
+      default: return 3;
+    }
+  };
 
   // Initialize a new game with random puzzle generation
   const initializeGame = useCallback((difficulty: Difficulty) => {
@@ -32,6 +56,7 @@ function App() {
       }))
     );
 
+    setMaxHints(getMaxHints(difficulty));
     setGameState({
       grid,
       solution,
@@ -151,7 +176,8 @@ function App() {
         isShaking: true,
         isCorrect: false
       };
-      setPoints(0); // reset điểm khi sai
+      setPoints(0); // reset chuỗi đúng liên tiếp khi sai
+      setScore(s => Math.max(0, s - getBasePoint(gameState.difficulty))); // trừ điểm khi sai, không để < 0
       setGameState(prev => prev ? {
         ...prev,
         grid: updateHighlighting(newGrid, row, col),
@@ -176,7 +202,8 @@ function App() {
         isShaking: false,
         isCorrect: true
       };
-      setPoints(p => p + 1); // tăng điểm khi đúng
+      setPoints(p => p + 1); // tăng chuỗi đúng liên tiếp
+      setScore(s => s + getBasePoint(gameState.difficulty) * (points + 1)); // cộng điểm theo chuỗi
       setGameState(prev => prev ? {
         ...prev,
         grid: updateHighlighting(newGrid, row, col),
@@ -192,7 +219,7 @@ function App() {
       }, 300);
       return;
     }
-  }, [gameState, sudokuGenerator, checkCompletion, updateHighlighting]);
+  }, [gameState, sudokuGenerator, checkCompletion, updateHighlighting, points]);
 
   // Handle erase
   const handleErase = useCallback(() => {
@@ -230,12 +257,10 @@ function App() {
   // Handle hint
   const handleHint = useCallback(() => {
     if (!gameState || !gameState.selectedCell || gameState.isCompleted || gameState.isPaused) return;
-
+    if (gameState.hintsUsed >= maxHints) return; // hết lượt hint
     const { row, col } = gameState.selectedCell;
     const cell = gameState.grid[row][col];
-    
     if (cell.isGiven || cell.value !== 0) return;
-
     const correctValue = gameState.solution[row][col];
     const newGrid = [...gameState.grid];
     newGrid[row][col] = {
@@ -243,17 +268,25 @@ function App() {
       value: correctValue,
       notes: new Set(),
       isError: false,
+      isShaking: false,
+      isCorrect: true
     };
-
     const isCompleted = checkCompletion(newGrid.map(row => row.map(cell => cell.value)));
-
     setGameState(prev => prev ? {
       ...prev,
       grid: updateHighlighting(newGrid, row, col),
       hintsUsed: prev.hintsUsed + 1,
       isCompleted
     } : null);
-  }, [gameState, checkCompletion, updateHighlighting]);
+    setTimeout(() => {
+      setGameState(prev => {
+        if (!prev) return prev;
+        const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
+        gridCopy[row][col].isCorrect = false;
+        return { ...prev, grid: gridCopy };
+      });
+    }, 300);
+  }, [gameState, checkCompletion, updateHighlighting, maxHints]);
 
   // Handle pause toggle
   const handlePauseToggle = useCallback(() => {
@@ -325,6 +358,7 @@ function App() {
           </h1>
           <p className="text-gray-300 text-base sm:text-lg">Challenge your mind with beautiful puzzles</p>
           <div className="mt-2 text-yellow-300 font-bold text-lg sm:text-xl">Liên tiếp đúng: {points}</div>
+          <div className="mt-1 text-green-300 font-bold text-base sm:text-lg">Điểm: {score}</div>
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-8">
           {/* Game Controls - Left Side */}
@@ -333,6 +367,7 @@ function App() {
               elapsedTime={gameState.elapsedTime}
               mistakes={gameState.mistakes}
               hintsUsed={gameState.hintsUsed}
+              maxHints={maxHints}
               isPaused={gameState.isPaused}
               isCompleted={gameState.isCompleted}
               difficulty={gameState.difficulty}
