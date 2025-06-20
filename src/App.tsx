@@ -350,9 +350,9 @@ function App() {
     if (token && username) setUser({ username, token });
   }, []);
 
-  // Lấy bảng xếp hạng khi showDifficultySelector
+  // Lấy bảng xếp hạng khi showDifficultySelector hoặc khi đang chơi game
   useEffect(() => {
-    if (!showDifficultySelector) return;
+    if (!showDifficultySelector && !gameState) return;
     setLoadingLeaderboard(true);
     const token = localStorage.getItem('token');
     fetch('/api/leaderboard', {
@@ -364,7 +364,7 @@ function App() {
         setUserRank(data.user || null);
       })
       .finally(() => setLoadingLeaderboard(false));
-  }, [showDifficultySelector, user]);
+  }, [showDifficultySelector, user, gameState]);
 
   // Đăng ký
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
@@ -424,9 +424,50 @@ function App() {
     localStorage.removeItem('username');
   }
 
+  // Nút đăng nhập/đăng xuất luôn ở góc phải trên cùng
+  const renderAuthButton = () => (
+    <div className="fixed top-2 right-2 z-50 flex gap-2">
+      {user ? (
+        <div className="flex items-center gap-2 bg-white/90 rounded-xl px-3 py-1 shadow border border-gray-200">
+          <span className="font-semibold text-purple-700">{user.username}</span>
+          <button onClick={handleLogout} className="text-xs text-red-500 font-bold hover:underline">Đăng xuất</button>
+        </div>
+      ) : (
+        <button onClick={() => { setShowAuth(true); setAuthMode('login'); }} className="bg-purple-600 text-white font-bold rounded-full shadow px-4 py-2 text-sm hover:bg-purple-700 transition-all">Đăng nhập / Đăng ký</button>
+      )}
+      {showAuth && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-xs relative animate-pop">
+            <button className="absolute top-2 right-2 text-xl font-bold text-gray-500 hover:text-gray-700" onClick={() => setShowAuth(false)}>&times;</button>
+            <div className="mb-4 flex gap-2 justify-center">
+              <button onClick={() => setAuthMode('login')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='login' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng nhập</button>
+              <button onClick={() => setAuthMode('register')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='register' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng ký</button>
+            </div>
+            {authMode === 'login' ? (
+              <form onSubmit={handleLogin} className="space-y-3">
+                <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
+                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
+                {authError && <div className="text-red-500 text-xs">{authError}</div>}
+                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng nhập</button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} className="space-y-3">
+                <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
+                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
+                {authError && <div className="text-red-500 text-xs">{authError}</div>}
+                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng ký</button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   if (showDifficultySelector) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center p-4">
+        {renderAuthButton()}
         <div className="w-full max-w-2xl mx-auto flex flex-col md:flex-row gap-8 items-start justify-center">
           <div className="flex-1 w-full max-w-md">
             <DifficultySelector onStartGame={handleStartGame} />
@@ -439,43 +480,6 @@ function App() {
             )}
           </div>
         </div>
-        {/* Nút đăng nhập/đăng ký và popup */}
-        <div className="fixed top-2 right-2 z-50 flex gap-2">
-          {user ? (
-            <div className="flex items-center gap-2 bg-white/90 rounded-xl px-3 py-1 shadow border border-gray-200">
-              <span className="font-semibold text-purple-700">{user.username}</span>
-              <button onClick={handleLogout} className="text-xs text-red-500 font-bold hover:underline">Đăng xuất</button>
-            </div>
-          ) : (
-            <button onClick={() => { setShowAuth(true); setAuthMode('login'); }} className="bg-purple-600 text-white font-bold rounded-full shadow px-4 py-2 text-sm hover:bg-purple-700 transition-all">Đăng nhập / Đăng ký</button>
-          )}
-        </div>
-        {showAuth && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
-            <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-xs relative animate-pop">
-              <button className="absolute top-2 right-2 text-xl font-bold text-gray-500 hover:text-gray-700" onClick={() => setShowAuth(false)}>&times;</button>
-              <div className="mb-4 flex gap-2 justify-center">
-                <button onClick={() => setAuthMode('login')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='login' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng nhập</button>
-                <button onClick={() => setAuthMode('register')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='register' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng ký</button>
-              </div>
-              {authMode === 'login' ? (
-                <form onSubmit={handleLogin} className="space-y-3">
-                  <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                  <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                  {authError && <div className="text-red-500 text-xs">{authError}</div>}
-                  <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng nhập</button>
-                </form>
-              ) : (
-                <form onSubmit={handleRegister} className="space-y-3">
-                  <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                  <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                  {authError && <div className="text-red-500 text-xs">{authError}</div>}
-                  <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng ký</button>
-                </form>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     );
   }
@@ -493,6 +497,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-1 sm:p-4">
+      {renderAuthButton()}
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-4 sm:mb-8">
           <h1 className="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent mb-1 sm:mb-2">
@@ -518,6 +523,14 @@ function App() {
               onHint={handleHint}
               onNewGame={handleNewGame}
             />
+            {/* Bảng xếp hạng ở cột bên trái trên desktop */}
+            <div className="mt-6">
+              {loadingLeaderboard ? (
+                <div className="text-center text-gray-400 py-6">Đang tải bảng xếp hạng...</div>
+              ) : (
+                <Leaderboard leaderboard={leaderboard} userRank={userRank} />
+              )}
+            </div>
           </div>
           {/* Sudoku Grid - Center */}
           <div className="xl:col-span-2 xl:order-2 mb-2 xl:mb-0 flex items-center justify-center">
@@ -587,7 +600,7 @@ function App() {
             <div className="font-bold text-base text-purple-700 mb-2">Luật chơi & Tính điểm</div>
             <ul className="list-disc pl-5 space-y-1">
               <li>Điền đúng: <span className="text-green-600 font-semibold">+Điểm</span> = Điểm cơ bản × chuỗi đúng liên tiếp.</li>
-              <li>Điền sai: <span className="text-red-600 font-semibold">-Điểm</span> = Trừ điểm cơ bản (không âm).</li>
+              <li>Điền sai: <span className="text-red-600 font-semibold">-Điểm</span> = Trừ điểm cơ bản (không để &lt; 0).</li>
               <li>Dùng Hint: <span className="text-yellow-600 font-semibold">Không cộng điểm</span>, số lần hint giới hạn theo độ khó.</li>
             </ul>
             <div className="mt-2 font-semibold text-gray-800">Điểm cơ bản theo độ khó:</div>
