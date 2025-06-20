@@ -518,33 +518,19 @@ function App() {
           <div className="mt-2 text-yellow-300 font-bold text-lg sm:text-xl">Liên tiếp đúng: {points}</div>
           <div className="mt-1 text-green-300 font-bold text-base sm:text-lg">Điểm: {score}</div>
         </div>
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-8">
-          {/* Game Controls - Left Side */}
-          <div className="xl:order-1 mb-2 xl:mb-0">
-            {/* Bảng xếp hạng luôn ở trên cùng, cố định chiều cao */}
-            <div className="mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 sm:gap-6 items-start">
+          {/* Leaderboard - Left Side */}
+          <div className="md:col-span-2 w-full max-w-xs mx-auto md:mx-0 mb-4 md:mb-0">
+            <div className="mb-4">
               {loadingLeaderboard ? (
                 <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
               ) : (
                 <Leaderboard leaderboard={leaderboard} userRank={userRank} />
               )}
             </div>
-            <GameControls
-              elapsedTime={gameState.elapsedTime}
-              mistakes={gameState.mistakes}
-              hintsUsed={gameState.hintsUsed}
-              maxHints={maxHints}
-              isPaused={gameState.isPaused}
-              isCompleted={gameState.isCompleted}
-              difficulty={gameState.difficulty}
-              onPauseToggle={handlePauseToggle}
-              onRestart={handleRestart}
-              onHint={handleHint}
-              onNewGame={handleNewGame}
-            />
           </div>
           {/* Sudoku Grid - Center */}
-          <div className="xl:col-span-2 xl:order-2 mb-2 xl:mb-0 flex items-center justify-center">
+          <div className="md:col-span-8 flex items-center justify-center mb-4 md:mb-0">
             {gameState.isPaused ? (
               <div className="bg-white/95 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-6 sm:p-12 text-center border border-white/20">
                 <h2 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2 sm:mb-4">Game Paused</h2>
@@ -565,18 +551,21 @@ function App() {
               />
             )}
           </div>
-          {/* Number Pad - Right Side */}
-          <div className="xl:order-3">
-            {!gameState.isPaused && (
-              <NumberPad
-                onNumberClick={handleNumberClick}
-                onEraseClick={handleErase}
-                onNotesToggle={handleNotesToggle}
-                isNotesMode={gameState.isNotesMode}
-                selectedCell={gameState.selectedCell}
-                onPadNumberSelect={handlePadNumberSelect}
-              />
-            )}
+          {/* Game Controls - Right Side */}
+          <div className="md:col-span-2 w-full max-w-xs mx-auto md:mx-0">
+            <GameControls
+              elapsedTime={gameState.elapsedTime}
+              mistakes={gameState.mistakes}
+              hintsUsed={gameState.hintsUsed}
+              maxHints={maxHints}
+              isPaused={gameState.isPaused}
+              isCompleted={gameState.isCompleted}
+              difficulty={gameState.difficulty}
+              onPauseToggle={handlePauseToggle}
+              onRestart={handleRestart}
+              onHint={handleHint}
+              onNewGame={handleNewGame}
+            />
           </div>
         </div>
       </div>
