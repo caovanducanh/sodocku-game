@@ -11,6 +11,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (exists) return res.status(409).json({ error: 'Username already exists' });
     const hash = await bcrypt.hash(password, 10);
     await redis.hset('users', { [username]: JSON.stringify({ password: hash, score: 0, games: 0 }) });
+    await redis.zadd('leaderboard', { score: 0, member: username });
     res.status(201).json({ message: 'User registered' });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || String(e), stack: e?.stack || null });

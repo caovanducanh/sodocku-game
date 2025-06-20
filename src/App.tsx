@@ -475,7 +475,7 @@ function App() {
           </div>
           <div className="flex-1 w-full max-w-md mt-8 md:mt-0">
             {loadingLeaderboard ? (
-              <div className="text-center text-gray-400 py-6">Đang tải bảng xếp hạng...</div>
+              <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
             ) : (
               <Leaderboard leaderboard={leaderboard} userRank={userRank} />
             )}
@@ -511,6 +511,14 @@ function App() {
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-8">
           {/* Game Controls - Left Side */}
           <div className="xl:order-1 mb-2 xl:mb-0">
+            {/* Bảng xếp hạng luôn ở trên cùng, cố định chiều cao */}
+            <div className="mb-6">
+              {loadingLeaderboard ? (
+                <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
+              ) : (
+                <Leaderboard leaderboard={leaderboard} userRank={userRank} />
+              )}
+            </div>
             <GameControls
               elapsedTime={gameState.elapsedTime}
               mistakes={gameState.mistakes}
@@ -524,14 +532,6 @@ function App() {
               onHint={handleHint}
               onNewGame={handleNewGame}
             />
-            {/* Bảng xếp hạng ở cột bên trái trên desktop */}
-            <div className="mt-6">
-              {loadingLeaderboard ? (
-                <div className="text-center text-gray-400 py-6">Đang tải bảng xếp hạng...</div>
-              ) : (
-                <Leaderboard leaderboard={leaderboard} userRank={userRank} />
-              )}
-            </div>
           </div>
           {/* Sudoku Grid - Center */}
           <div className="xl:col-span-2 xl:order-2 mb-2 xl:mb-0 flex items-center justify-center">
