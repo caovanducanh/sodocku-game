@@ -22,18 +22,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const ip = req.headers['x-forwarded-for'];
     
-    const params = new URLSearchParams();
-    params.append('secret', TURNSTILE_SECRET_KEY);
-    params.append('response', token);
+    const body: { secret: string; response: string; remoteip?: string } = {
+      secret: TURNSTILE_SECRET_KEY,
+      response: token,
+    };
     if (ip) {
-      params.append('remoteip', Array.isArray(ip) ? ip[0] : ip);
+      body.remoteip = Array.isArray(ip) ? ip[0] : ip;
     }
 
-    console.log('Sending form-data to Cloudflare via axios:', params.toString());
+    console.log('Sending JSON to Cloudflare via axios:', body);
 
     const response = await axios.post(
       'https://challenges.cloudflare.com/turnstile/v2/siteverify',
-      params
+      body,
+      { headers: { 'Content-Type': 'application/json' } }
     );
 
     const data = response.data;
