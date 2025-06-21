@@ -519,7 +519,7 @@ function App() {
           <div className="mt-1 text-green-300 font-bold text-base sm:text-lg">Điểm: {score}</div>
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-8 xl:items-start">
-          {/* Leaderboard - Left Side */}
+          {/* Left Side: Leaderboard and Game Controls */}
           <div className="xl:order-1 mb-2 xl:mb-0">
             <div className="mb-6">
               {loadingLeaderboard ? (
@@ -528,6 +528,19 @@ function App() {
                 <Leaderboard leaderboard={leaderboard} userRank={userRank} />
               )}
             </div>
+            <GameControls
+              elapsedTime={gameState.elapsedTime}
+              mistakes={gameState.mistakes}
+              hintsUsed={gameState.hintsUsed}
+              maxHints={maxHints}
+              isPaused={gameState.isPaused}
+              isCompleted={gameState.isCompleted}
+              difficulty={gameState.difficulty}
+              onPauseToggle={handlePauseToggle}
+              onRestart={handleRestart}
+              onHint={handleHint}
+              onNewGame={handleNewGame}
+            />
           </div>
           {/* Sudoku Grid - Center */}
           <div className="xl:col-span-2 xl:order-2 mb-2 xl:mb-0 flex items-center justify-center">
@@ -551,23 +564,9 @@ function App() {
               />
             )}
           </div>
-          {/* Controls - Right Side */}
-          <div className="xl:order-3">
-            <GameControls
-              elapsedTime={gameState.elapsedTime}
-              mistakes={gameState.mistakes}
-              hintsUsed={gameState.hintsUsed}
-              maxHints={maxHints}
-              isPaused={gameState.isPaused}
-              isCompleted={gameState.isCompleted}
-              difficulty={gameState.difficulty}
-              onPauseToggle={handlePauseToggle}
-              onRestart={handleRestart}
-              onHint={handleHint}
-              onNewGame={handleNewGame}
-            />
+          {/* Right Side: Number Pad Only */}
+          <div className="xl:order-3 h-full flex items-center justify-center">
             {!gameState.isPaused && (
-              <div className="mt-6">
                 <NumberPad
                   onNumberClick={handleNumberClick}
                   onEraseClick={handleErase}
@@ -576,7 +575,6 @@ function App() {
                   selectedCell={gameState.selectedCell}
                   onPadNumberSelect={handlePadNumberSelect}
                 />
-              </div>
             )}
           </div>
         </div>

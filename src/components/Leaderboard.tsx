@@ -22,17 +22,17 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ leaderboard, userRank }) => {
       <table className="min-w-[220px] w-full border-collapse rounded-xl overflow-hidden shadow-lg bg-white">
         <thead>
           <tr className="bg-purple-100 text-purple-700">
-            <th className="py-2 px-3 text-left">#</th>
-            <th className="py-2 px-3 text-left">Tên</th>
-            <th className="py-2 px-3 text-left">Điểm</th>
+            <th className="py-1 px-2 text-left text-sm">#</th>
+            <th className="py-1 px-2 text-left text-sm">Tên</th>
+            <th className="py-1 px-2 text-left text-sm">Điểm</th>
           </tr>
         </thead>
         <tbody>
           {leaderboard && leaderboard.length > 0 ? leaderboard.map((entry, idx) => (
             <tr key={entry.username + entry.score} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-              <td className="py-2 px-3 font-bold text-purple-600">{idx + 1}</td>
-              <td className="py-2 px-3">{entry.username}</td>
-              <td className="py-2 px-3">{entry.score}</td>
+              <td className="py-1 px-2 text-sm font-bold text-purple-600">{idx + 1}</td>
+              <td className="py-1 px-2 text-sm">{entry.username}</td>
+              <td className="py-1 px-2 text-sm">{entry.score}</td>
             </tr>
           )) : (
             <tr><td colSpan={3} className="text-center text-gray-400 py-6">Chưa có dữ liệu</td></tr>
