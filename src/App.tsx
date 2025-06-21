@@ -69,6 +69,8 @@ function App() {
       }))
     );
 
+    setPoints(0);
+    setScore(0);
     setMaxHints(getMaxHints(difficulty));
     setGameState({
       grid,
@@ -84,6 +86,61 @@ function App() {
       isNotesMode: false,
     });
   }, [sudokuGenerator]);
+
+  // Load game from localStorage on initial load
+  useEffect(() => {
+    const savedStateJSON = localStorage.getItem('sudoku-game-state');
+    if (savedStateJSON) {
+      try {
+        const savedData = JSON.parse(savedStateJSON);
+        if (savedData && savedData.gameState && !savedData.gameState.isCompleted) {
+          const { gameState: savedGameState, points: savedPoints, score: savedScore } = savedData;
+          
+          const loadedGrid = savedGameState.grid.map((row: SudokuCell[]) => 
+            row.map((cell: SudokuCell) => ({
+              ...cell,
+              notes: new Set((cell.notes as unknown as number[]))
+            }))
+          );
+
+          setGameState({
+            ...savedGameState,
+            grid: loadedGrid,
+            startTime: Date.now() - savedGameState.elapsedTime * 1000,
+            isPaused: false, // Always resume in a non-paused state
+          });
+          setPoints(savedPoints || 0);
+          setScore(savedScore || 0);
+          setShowDifficultySelector(false);
+        } else {
+          localStorage.removeItem('sudoku-game-state');
+        }
+      } catch (e) {
+        console.error("Error loading game state:", e);
+        localStorage.removeItem('sudoku-game-state');
+      }
+    }
+  }, []);
+
+  // Save game state to localStorage whenever it changes
+  useEffect(() => {
+    if (gameState && !gameState.isCompleted) {
+      const stateToSave = {
+        gameState: {
+          ...gameState,
+          grid: gameState.grid.map(row => 
+            row.map(cell => ({ ...cell, notes: Array.from(cell.notes) }))
+          ),
+        },
+        points,
+        score
+      };
+      localStorage.setItem('sudoku-game-state', JSON.stringify(stateToSave));
+    } else {
+      // Clear storage if game is completed or state is null
+      localStorage.removeItem('sudoku-game-state');
+    }
+  }, [gameState, points, score]);
 
   // Update elapsed time
   useEffect(() => {
@@ -310,13 +367,17 @@ function App() {
   // Handle restart
   const handleRestart = useCallback(() => {
     if (!gameState) return;
-    initializeGame(gameState.difficulty);
+    if (window.confirm('Bạn có chắc chắn muốn bắt đầu lại? Mọi tiến trình sẽ bị mất.')) {
+        initializeGame(gameState.difficulty);
+    }
   }, [gameState, initializeGame]);
 
   // Handle new game
   const handleNewGame = useCallback(() => {
-    setShowDifficultySelector(true);
-    setGameState(null);
+    if (window.confirm('Bạn có chắc chắn muốn tạo ván mới? Mọi tiến trình sẽ bị mất.')) {
+        setShowDifficultySelector(true);
+        setGameState(null);
+    }
   }, []);
 
   // Start game with selected difficulty
