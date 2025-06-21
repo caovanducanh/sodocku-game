@@ -48,16 +48,14 @@ const GameUI: React.FC<GameUIProps> = ({
                         <div className="mt-2 text-yellow-300 font-bold text-lg sm:text-xl">Liên tiếp đúng: {points}</div>
                         <div className="mt-1 text-green-300 font-bold text-base sm:text-lg">Điểm: {score}</div>
                     </div>
-                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-6 xl:items-start">
-                        {/* Left Side: Leaderboard and Game Controls */}
-                        <div className="xl:order-1 mb-2 xl:mb-0 h-full flex flex-col justify-between">
-                            <div className="flex-grow">
-                                {loadingLeaderboard ? (
-                                    <LeaderboardSkeleton />
-                                ) : (
-                                    <Leaderboard leaderboard={leaderboard} userRank={userRank} />
-                                )}
-                            </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 items-start">
+                        {/* Left Side (or Top on Mobile): Leaderboard and Game Controls */}
+                        <div className="lg:col-span-1 xl:order-1 space-y-4 sm:space-y-6">
+                            {loadingLeaderboard ? (
+                                <LeaderboardSkeleton />
+                            ) : (
+                                <Leaderboard leaderboard={leaderboard} userRank={userRank} />
+                            )}
                             <GameControls
                                 elapsedTime={gameState.elapsedTime}
                                 mistakes={gameState.mistakes}
@@ -73,9 +71,9 @@ const GameUI: React.FC<GameUIProps> = ({
                             />
                         </div>
                         {/* Sudoku Grid - Center */}
-                        <div className="xl:col-span-2 xl:order-2 mb-2 xl:mb-0 flex items-center justify-center">
+                        <div className="lg:col-span-2 xl:col-span-2 xl:order-2 flex items-center justify-center">
                             {gameState.isPaused ? (
-                                <div className="bg-white/95 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-6 sm:p-12 text-center border border-white/20">
+                                <div className="bg-white/95 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-6 sm:p-12 text-center border border-white/20 w-full aspect-square flex flex-col justify-center">
                                     <h2 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2 sm:mb-4">Game Paused</h2>
                                     <p className="text-gray-600 mb-4 sm:mb-8 text-base sm:text-lg">Take a break and come back when you're ready!</p>
                                     <button
@@ -94,8 +92,20 @@ const GameUI: React.FC<GameUIProps> = ({
                                 />
                             )}
                         </div>
-                        {/* Right Side: Number Pad Only */}
-                        <div className="xl:order-3 h-full flex items-center justify-center">
+                        {/* Right Side: Number Pad. On mobile, it will be at the bottom. On LG, it will be below the grid. */}
+                        <div className="w-full lg:hidden">
+                            {!gameState.isPaused && (
+                                <NumberPad
+                                    onNumberClick={handleNumberClick}
+                                    onEraseClick={handleErase}
+                                    onNotesToggle={handleNotesToggle}
+                                    isNotesMode={gameState.isNotesMode}
+                                    selectedCell={gameState.selectedCell}
+                                    onPadNumberSelect={handlePadNumberSelect}
+                                />
+                            )}
+                        </div>
+                        <div className="hidden lg:block xl:order-3">
                             {!gameState.isPaused && (
                                 <NumberPad
                                     onNumberClick={handleNumberClick}
