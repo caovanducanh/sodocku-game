@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { Edit3, Eraser } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface NumberPadProps {
   onNumberClick: (number: number) => void;
@@ -19,6 +20,10 @@ const NumberPad: React.FC<NumberPadProps> = memo(({
   onPadNumberSelect
 }) => {
   const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const buttonProps = {
+    whileTap: { scale: 0.95 },
+    transition: { type: "spring" as const, stiffness: 400, damping: 17 }
+  };
 
   return (
     <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-2 sm:p-4 md:p-6 border border-gray-200 max-w-full">
@@ -27,7 +32,8 @@ const NumberPad: React.FC<NumberPadProps> = memo(({
       {/* Number Grid */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
         {numbers.map((number) => (
-          <button
+          <motion.button
+            {...buttonProps}
             key={number}
             onClick={(e) => {
               if (onPadNumberSelect && (e.type === 'contextmenu' || e.shiftKey)) {
@@ -46,13 +52,14 @@ const NumberPad: React.FC<NumberPadProps> = memo(({
             }`}
           >
             {number}
-          </button>
+          </motion.button>
         ))}
       </div>
       
       {/* Control Buttons */}
       <div className="space-y-2 sm:space-y-3">
-        <button
+        <motion.button
+          {...buttonProps}
           onClick={onEraseClick}
           disabled={!selectedCell}
           className={`w-full flex items-center justify-center gap-2 h-10 sm:h-12 rounded-xl sm:rounded-2xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg select-none ${
@@ -63,9 +70,10 @@ const NumberPad: React.FC<NumberPadProps> = memo(({
         >
           <Eraser size={20} />
           Erase
-        </button>
+        </motion.button>
         
-        <button
+        <motion.button
+          {...buttonProps}
           onClick={onNotesToggle}
           className={`w-full flex items-center justify-center gap-2 h-10 sm:h-12 rounded-xl sm:rounded-2xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg select-none ${
             isNotesMode
@@ -75,7 +83,7 @@ const NumberPad: React.FC<NumberPadProps> = memo(({
         >
           <Edit3 size={20} />
           {isNotesMode ? 'Notes ON' : 'Notes OFF'}
-        </button>
+        </motion.button>
       </div>
       
       {/* Mode Indicator */}

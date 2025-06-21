@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { Crown } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface LeaderboardEntry {
   username: string;
@@ -10,6 +11,28 @@ interface LeaderboardProps {
   leaderboard: LeaderboardEntry[];
   userRank?: { rank: number; score: number } | null;
 }
+
+const tableVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 260,
+      damping: 20,
+    }
+  },
+};
 
 const Leaderboard: React.FC<LeaderboardProps> = memo(({ leaderboard, userRank }) => {
   const getCrown = (rank: number) => {
@@ -35,9 +58,13 @@ const Leaderboard: React.FC<LeaderboardProps> = memo(({ leaderboard, userRank })
             <th className="py-1 px-2 text-left text-sm">Điểm</th>
           </tr>
         </thead>
-        <tbody>
+        <motion.tbody
+          variants={tableVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {leaderboard && leaderboard.length > 0 ? leaderboard.map((entry, idx) => (
-            <tr key={entry.username + entry.score} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+            <motion.tr variants={rowVariants} key={entry.username + entry.score} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
               <td className="py-1 px-2 text-sm font-bold text-purple-600">{idx + 1}</td>
               <td className="py-1 px-2 text-sm">
                 <div className="flex items-center gap-2">
@@ -46,11 +73,11 @@ const Leaderboard: React.FC<LeaderboardProps> = memo(({ leaderboard, userRank })
                 </div>
               </td>
               <td className="py-1 px-2 text-sm">{entry.score}</td>
-            </tr>
+            </motion.tr>
           )) : (
             <tr><td colSpan={3} className="text-center text-gray-400 py-6">Chưa có dữ liệu</td></tr>
           )}
-        </tbody>
+        </motion.tbody>
       </table>
     </div>
   );

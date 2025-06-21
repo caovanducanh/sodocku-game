@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { Play, Pause, Lightbulb, RotateCcw, Settings2 } from 'lucide-react';
 import { Difficulty } from '../types/sudoku';
+import { motion } from 'framer-motion';
 
 interface GameControlsProps {
   elapsedTime: number;
@@ -34,6 +35,11 @@ const GameControls: React.FC<GameControlsProps> = memo(({
   onHint,
   onNewGame,
 }) => {
+  const buttonProps = {
+    whileTap: { scale: 0.95 },
+    transition: { type: "spring" as const, stiffness: 400, damping: 17 }
+  };
+
   return (
     <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-3 border border-white/20 w-full max-w-xs mx-auto">
       <div className="flex items-center justify-center mb-2">
@@ -58,31 +64,35 @@ const GameControls: React.FC<GameControlsProps> = memo(({
       </div>
       
       <div className="grid grid-cols-2 gap-2">
-        <button
+        <motion.button
+          {...buttonProps}
           onClick={onPauseToggle}
           className="bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
         >
           <Pause size={16} /> {isPaused ? 'Resume' : 'Pause'}
-        </button>
-        <button
+        </motion.button>
+        <motion.button
+          {...buttonProps}
           onClick={onHint}
           disabled={hintsUsed >= maxHints}
           className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:bg-gray-400 text-sm"
         >
           <Lightbulb size={16} /> Hint
-        </button>
-        <button
+        </motion.button>
+        <motion.button
+          {...buttonProps}
           onClick={onRestart}
           className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
         >
           <RotateCcw size={16} /> Restart
-        </button>
-        <button
+        </motion.button>
+        <motion.button
+          {...buttonProps}
           onClick={onNewGame}
           className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
         >
           <Settings2 size={16} /> New Game
-        </button>
+        </motion.button>
       </div>
     </div>
   );

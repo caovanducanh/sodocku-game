@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Difficulty, DifficultyConfig } from '../types/sudoku';
 import { Play, Star } from 'lucide-react';
 
@@ -63,6 +64,11 @@ const DifficultySelector: React.FC<DifficultySelectorProps> = ({ onStartGame }) 
     ));
   };
 
+  const buttonProps = {
+    whileTap: { scale: 0.95 },
+    transition: { type: "spring" as const, stiffness: 400, damping: 17 }
+  };
+
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
       <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl max-w-lg w-full p-8 border border-white/20">
@@ -75,7 +81,8 @@ const DifficultySelector: React.FC<DifficultySelectorProps> = ({ onStartGame }) 
         
         <div className="space-y-3 mb-8">
           {difficulties.map((diff) => (
-            <button
+            <motion.button
+              {...buttonProps}
               key={diff.name}
               onClick={() => setSelectedDifficulty(diff.name as Difficulty)}
               className={`w-full p-4 rounded-2xl border-2 transition-all duration-300 transform hover:scale-[1.02] ${
@@ -106,7 +113,7 @@ const DifficultySelector: React.FC<DifficultySelectorProps> = ({ onStartGame }) 
                   )}
                 </div>
               </div>
-            </button>
+            </motion.button>
           ))}
         </div>
         

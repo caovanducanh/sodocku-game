@@ -5,6 +5,7 @@ import GameControls from './GameControls';
 import Leaderboard from './Leaderboard';
 import WinDialog from './WinDialog';
 import { GameState } from '../types/sudoku';
+import LeaderboardSkeleton from './LeaderboardSkeleton';
 
 interface GameUIProps {
     gameState: GameState;
@@ -50,7 +51,7 @@ const GameUI: React.FC<GameUIProps> = ({
                     <div className="xl:order-1 mb-2 xl:mb-0 h-full flex flex-col justify-between">
                         <div className="flex-grow">
                             {loadingLeaderboard ? (
-                                <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
+                                <LeaderboardSkeleton />
                             ) : (
                                 <Leaderboard leaderboard={leaderboard} userRank={userRank} />
                             )}
