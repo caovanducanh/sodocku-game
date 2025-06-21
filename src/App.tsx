@@ -128,109 +128,99 @@ function App() {
 
     setSelectedNumber(null); // ALWAYS clear number selection from pad
 
-    const clickedValue = gameState.grid[row][col].value;
-    let newGrid;
-    if (clickedValue !== 0) {
-      // Highlight all cells with the same value
-      newGrid = gameState.grid.map(rowArr =>
-        rowArr.map(cell => ({
-          ...cell,
-          isHighlighted: cell.value === clickedValue
-        }))
-      );
-    } else {
-      // Highlight row/col/box for empty cells
-      newGrid = updateHighlighting(gameState.grid, row, col);
+    // If the same cell is clicked again, deselect it
+    if (gameState.selectedCell && gameState.selectedCell.row === row && gameState.selectedCell.col === col) {
+      const gridWithoutHighlight = gameState.grid.map(r => r.map(c => ({...c, isHighlighted: false, isSelected: false})));
+      setGameState(prev => prev ? {...prev, grid: gridWithoutHighlight, selectedCell: null} : null);
+      return;
     }
+
+    const newGrid = updateHighlighting(gameState.grid, row, col);
 
     setGameState(prev => prev ? {
       ...prev,
       grid: newGrid,
       selectedCell: { row, col },
-      isCompleted: checkCompletion(newGrid.map(row => row.map(cell => cell.value)))
     } : null);
-  }, [gameState, updateHighlighting, checkCompletion]);
+  }, [gameState, updateHighlighting]);
 
   // Handle number input with validation
   const handleNumberClick = useCallback((number: number) => {
-    setSelectedNumber(null);
     if (!gameState || !gameState.selectedCell || gameState.isCompleted || gameState.isPaused) return;
 
     const { row, col } = gameState.selectedCell;
-    const cell = gameState.grid[row][col];
-    if (cell.isGiven) return;
+    const originalCell = gameState.grid[row][col];
+    if (originalCell.isGiven) return;
 
     const newGrid = gameState.grid.map(rowArr => rowArr.map(cell => ({ ...cell, isShaking: false, isCorrect: false })));
+    const cellToModify = newGrid[row][col];
+
     if (gameState.isNotesMode) {
-      // Toggle note
-      const newNotes = new Set(cell.notes);
+      const newNotes = new Set(cellToModify.notes);
       if (newNotes.has(number)) {
         newNotes.delete(number);
       } else {
         newNotes.add(number);
       }
-      newGrid[row][col] = { ...cell, notes: newNotes, isShaking: false, isCorrect: false };
+      cellToModify.notes = newNotes;
       setGameState(prev => prev ? { ...prev, grid: newGrid } : null);
       return;
     }
+
     // Place number
-    const isValid = sudokuGenerator.isValidMove(newGrid, row, col, number);
     const isCorrect = gameState.solution[row][col] === number;
     let newMistakes = gameState.mistakes;
-    if (!isValid || !isCorrect) {
+    let newCorrectStreak = points;
+    let newScore = score;
+    
+    cellToModify.value = number;
+    cellToModify.notes = new Set();
+
+    if (!isCorrect) {
       newMistakes++;
-      newGrid[row][col] = {
-        ...cell,
-        value: number,
-        notes: new Set(),
-        isError: true,
-        isShaking: true,
-        isCorrect: false
-      };
-      setPoints(0); // reset chuỗi đúng liên tiếp khi sai
-      setScore(s => Math.max(0, s - getBasePoint(gameState.difficulty))); // trừ điểm khi sai, không để < 0
-      setGameState(prev => prev ? {
-        ...prev,
-        grid: updateHighlighting(newGrid, row, col),
-        mistakes: newMistakes,
-        isCompleted: checkCompletion(newGrid.map(row => row.map(cell => cell.value)))
-      } : null);
-      setTimeout(() => {
-        setGameState(prev => {
-          if (!prev) return prev;
-          const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
-          gridCopy[row][col].isShaking = false;
-          return { ...prev, grid: gridCopy };
-        });
-      }, 400);
-      return;
+      newCorrectStreak = 0;
+      newScore = Math.max(0, score - getBasePoint(gameState.difficulty));
+      cellToModify.isError = true;
+      cellToModify.isShaking = true;
     } else {
-      newGrid[row][col] = {
-        ...cell,
-        value: number,
-        notes: new Set(),
-        isError: false,
-        isShaking: false,
-        isCorrect: true
-      };
-      setPoints(p => p + 1); // tăng chuỗi đúng liên tiếp
-      setScore(s => s + getBasePoint(gameState.difficulty) * (points + 1)); // cộng điểm theo chuỗi
-      setGameState(prev => prev ? {
-        ...prev,
-        grid: updateHighlighting(newGrid, row, col),
-        isCompleted: checkCompletion(newGrid.map(row => row.map(cell => cell.value)))
-      } : null);
-      setTimeout(() => {
-        setGameState(prev => {
-          if (!prev) return prev;
-          const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
-          gridCopy[row][col].isCorrect = false;
-          return { ...prev, grid: gridCopy };
-        });
-      }, 300);
-      return;
+      newCorrectStreak++;
+      newScore = score + getBasePoint(gameState.difficulty) * newCorrectStreak;
+      cellToModify.isCorrect = true;
+      cellToModify.isError = false;
     }
-  }, [gameState, sudokuGenerator, checkCompletion, updateHighlighting, points]);
+    
+    setPoints(newCorrectStreak);
+    setScore(newScore);
+
+    const isCompleted = checkCompletion(newGrid.map(r => r.map(c => c.value)));
+
+    setGameState(prev => prev ? {
+        ...prev,
+        grid: newGrid,
+        mistakes: newMistakes,
+        isCompleted: isCompleted
+    } : null);
+
+    if (!isCorrect) {
+        setTimeout(() => {
+            setGameState(prev => {
+                if (!prev) return prev;
+                const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
+                gridCopy[row][col].isShaking = false;
+                return { ...prev, grid: gridCopy };
+            });
+        }, 400);
+    } else {
+         setTimeout(() => {
+            setGameState(prev => {
+                if (!prev) return prev;
+                const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
+                gridCopy[row][col].isCorrect = false;
+                return { ...prev, grid: updateHighlighting(gridCopy, row, col) };
+            });
+        }, 300);
+    }
+  }, [gameState, points, score, sudokuGenerator, checkCompletion, updateHighlighting]);
 
   // Handle erase
   const handleErase = useCallback(() => {
@@ -238,20 +228,14 @@ function App() {
 
     const { row, col } = gameState.selectedCell;
     const cell = gameState.grid[row][col];
-    
     if (cell.isGiven) return;
 
     const newGrid = [...gameState.grid];
-    newGrid[row][col] = {
-      ...cell,
-      value: 0,
-      notes: new Set(),
-      isError: false,
-    };
-
+    newGrid[row][col] = { ...cell, value: 0, notes: new Set(), isError: false, isCorrect: false };
+    
     setGameState(prev => prev ? {
       ...prev,
-      grid: updateHighlighting(newGrid, row, col)
+      grid: updateHighlighting(newGrid, row, col),
     } : null);
   }, [gameState, updateHighlighting]);
 
@@ -267,37 +251,47 @@ function App() {
 
   // Handle hint
   const handleHint = useCallback(() => {
-    if (!gameState || !gameState.selectedCell || gameState.isCompleted || gameState.isPaused) return;
-    if (gameState.hintsUsed >= maxHints) return; // hết lượt hint
-    const { row, col } = gameState.selectedCell;
-    const cell = gameState.grid[row][col];
-    if (cell.isGiven || cell.value !== 0) return;
+    if (!gameState || gameState.isCompleted || gameState.isPaused) return;
+    if (gameState.hintsUsed >= maxHints) return;
+
+    let emptyCell: {row: number, col: number} | null = null;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (gameState.grid[r][c].value === 0) {
+          emptyCell = { row: r, col: c };
+          break;
+        }
+      }
+      if (emptyCell) break;
+    }
+
+    if (!emptyCell) return;
+
+    const { row, col } = emptyCell;
     const correctValue = gameState.solution[row][col];
+
     const newGrid = [...gameState.grid];
-    newGrid[row][col] = {
-      ...cell,
-      value: correctValue,
-      notes: new Set(),
-      isError: false,
-      isShaking: false,
-      isCorrect: true
-    };
-    const isCompleted = checkCompletion(newGrid.map(row => row.map(cell => cell.value)));
+    newGrid[row][col] = { ...newGrid[row][col], value: correctValue, isCorrect: true, notes: new Set() };
+    
+    const newHintsUsed = gameState.hintsUsed + 1;
+    const isCompleted = checkCompletion(newGrid.map(r => r.map(c => c.value)));
+
     setGameState(prev => prev ? {
-      ...prev,
-      grid: updateHighlighting(newGrid, row, col),
-      hintsUsed: prev.hintsUsed + 1,
-      isCompleted
+        ...prev,
+        grid: newGrid,
+        hintsUsed: newHintsUsed,
+        isCompleted: isCompleted,
     } : null);
+
     setTimeout(() => {
-      setGameState(prev => {
-        if (!prev) return prev;
-        const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
-        gridCopy[row][col].isCorrect = false;
-        return { ...prev, grid: gridCopy };
-      });
+        setGameState(prev => {
+            if (!prev) return prev;
+            const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
+            gridCopy[row][col].isCorrect = false;
+            return { ...prev, grid: updateHighlighting(gridCopy, row, col), selectedCell: {row, col} };
+        });
     }, 300);
-  }, [gameState, checkCompletion, updateHighlighting, maxHints]);
+  }, [gameState, maxHints, checkCompletion, updateHighlighting]);
 
   // Handle pause toggle
   const handlePauseToggle = useCallback(() => {
@@ -532,7 +526,7 @@ function App() {
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-6 xl:items-start">
           {/* Left Side: Leaderboard and Game Controls */}
-          <div className="xl:order-1 mb-2 xl:mb-0 h-full flex flex-col justify-center gap-6">
+          <div className="xl:order-1 mb-2 xl:mb-0 h-full flex flex-col justify-between">
             <div>
               {loadingLeaderboard ? (
                 <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
