@@ -132,13 +132,13 @@ const WinDialog: React.FC<WinDialogProps> = ({
               onClick={onPlayAgain}
               className="py-3 px-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-2xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
             >
-              Same Level
+              Chơi lại
             </button>
             <button
               onClick={onNewGame}
               className="py-3 px-6 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-bold rounded-2xl hover:from-purple-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
             >
-              New Level
+              Chọn độ khó khác
             </button>
           </div>
         </div>

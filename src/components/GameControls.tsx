@@ -91,7 +91,7 @@ const GameControls: React.FC<GameControlsProps> = memo(({
           onClick={onNewGame}
           className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
         >
-          <Settings2 size={16} /> New Game
+          <Settings2 size={16} /> Chọn độ khó khác
         </motion.button>
       </div>
     </div>

@@ -5,8 +5,8 @@ interface PopupProps {
 }
 
 export const HowToPlayPopup: React.FC<PopupProps> = ({ onClose }) => (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
-    <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-md relative animate-pop">
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={onClose}>
+    <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-md relative animate-pop" onClick={(e) => e.stopPropagation()}>
       <button className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-xl font-bold text-gray-700 shadow" onClick={onClose}>&times;</button>
       <div className="font-bold text-lg text-purple-700 mb-3 text-center">Hướng Dẫn Cho Người Mới Bắt Đầu</div>
       <div className="text-sm text-gray-800 space-y-3">
@@ -33,8 +33,8 @@ export const HowToPlayPopup: React.FC<PopupProps> = ({ onClose }) => (
 );
 
 export const RulesPopup: React.FC<PopupProps> = ({ onClose }) => (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
-    <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-sm relative animate-pop">
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={onClose}>
+    <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-sm relative animate-pop" onClick={(e) => e.stopPropagation()}>
       <button className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-xl font-bold text-gray-700 shadow" onClick={onClose}>&times;</button>
       <div className="font-bold text-lg text-purple-700 mb-3 text-center">Quy Tắc Tính Điểm</div>
       <div className="text-sm text-gray-800 space-y-3">
