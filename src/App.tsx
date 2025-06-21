@@ -5,6 +5,7 @@ import DifficultySelector from './components/DifficultySelector';
 import Leaderboard from './components/Leaderboard';
 import { Auth } from './components/Auth';
 import { HowToPlayPopup, RulesPopup } from './components/Popups';
+import Footer from './components/Footer';
 
 const GameUI = lazy(() => import('./components/GameUI'));
 
@@ -717,6 +718,7 @@ function App() {
             )}
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
