@@ -1,416 +1,154 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { SudokuGenerator } from './utils/sudokuGenerator';
-import { GameState, SudokuCell, Difficulty } from './types/sudoku';
-import SudokuGrid from './components/SudokuGrid';
-import NumberPad from './components/NumberPad';
-import GameControls from './components/GameControls';
+import { SudokuGrid } from './components/SudokuGrid';
+import { NumberPad } from './components/NumberPad';
+import { GameControls } from './components/GameControls';
+import { generateSudoku, checkSolution } from './utils/sudokuGenerator';
 import DifficultySelector from './components/DifficultySelector';
-import WinDialog from './components/WinDialog';
 import Leaderboard from './components/Leaderboard';
+import WinDialog from './components/WinDialog';
+
+type User = {
+  username: string;
+  score: number;
+  games: number;
+};
+
+type AuthMode = 'login' | 'register';
 
 function App() {
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [showDifficultySelector, setShowDifficultySelector] = useState(true);
-  const [sudokuGenerator] = useState(new SudokuGenerator());
-  const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
-  const [points, setPoints] = useState(0);
-  const [score, setScore] = useState(0);
-  const [maxHints, setMaxHints] = useState(3); // số lần hint tối đa
-  const [showRules, setShowRules] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [user, setUser] = useState<{ username: string; token: string } | null>(null);
+  const [grid, setGrid] = useState<number[][]>([]);
+  const [initialGrid, setInitialGrid] = useState<number[][]>([]);
+  const [solution, setSolution] = useState<number[][]>([]);
+  const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
+  const [conflicts, setConflicts] = useState<boolean[][]>([]);
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [authError, setAuthError] = useState<string | null>(null);
-  const [leaderboard, setLeaderboard] = useState<{ username: string; score: number }[]>([]);
-  const [userRank, setUserRank] = useState<{ rank: number; score: number } | null>(null);
-  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
-  const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [user, setUser] = useState<User | null>(null);
+  const [showWinDialog, setShowWinDialog] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<{ member: string; score: number }[]>([]);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [showOtpForm, setShowOtpForm] = useState(false);
+  const [usernameForVerification, setUsernameForVerification] = useState('');
+  
+  const googleLoginUrl = `/api/auth/google`;
 
-  const getBasePoint = (difficulty: Difficulty) => {
-    switch (difficulty) {
-      case 'easy': return 10;
-      case 'medium': return 20;
-      case 'hard': return 30;
-      case 'expert': return 40;
-      case 'master': return 50;
-      default: return 10;
-    }
-  };
-
-  const getMaxHints = (difficulty: Difficulty) => {
-    switch (difficulty) {
-      case 'easy': return 5;
-      case 'medium': return 4;
-      case 'hard': return 3;
-      case 'expert': return 2;
-      case 'master': return 1;
-      default: return 3;
-    }
-  };
-
-  // Initialize a new game with random puzzle generation
-  const initializeGame = useCallback((difficulty: Difficulty) => {
-    const solution = sudokuGenerator.generateComplete();
-    const puzzle = sudokuGenerator.createPuzzle(solution, difficulty);
-    
-    const grid: SudokuCell[][] = puzzle.map(row =>
-      row.map(cell => ({
-        value: cell,
-        isGiven: cell !== 0,
-        notes: new Set<number>(),
-        isHighlighted: false,
-        isError: false,
-        isSelected: false,
-        isShaking: false,
-        isCorrect: false,
-      }))
-    );
-
-    setMaxHints(getMaxHints(difficulty));
-    setGameState({
-      grid,
-      solution,
-      selectedCell: null,
-      difficulty,
-      startTime: Date.now(),
-      elapsedTime: 0,
-      mistakes: 0,
-      hintsUsed: 0,
-      isCompleted: false,
-      isPaused: false,
-      isNotesMode: false,
-    });
-  }, [sudokuGenerator]);
-
-  // Update elapsed time
-  useEffect(() => {
-    if (!gameState || gameState.isCompleted || gameState.isPaused) return;
-
-    const timer = setInterval(() => {
-      setGameState(prev => prev ? {
-        ...prev,
-        elapsedTime: Math.floor((Date.now() - prev.startTime) / 1000)
-      } : null);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [gameState?.isCompleted, gameState?.isPaused, gameState?.startTime]);
-
-  // Check if puzzle is completed
-  const checkCompletion = useCallback((grid: number[][]) => {
-    return grid.every(row => 
-      row.every(cell => cell !== 0)
-    );
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    setAuthError(null);
+    setAuthMessage(null);
+    setShowOtpForm(false);
+    setUsernameForVerification('');
   }, []);
 
-  // Update cell highlighting for better UX
-  const updateHighlighting = useCallback((grid: SudokuCell[][], selectedRow: number, selectedCol: number) => {
-    const selectedValue = grid[selectedRow][selectedCol].value;
-    
-    const newGrid = grid.map((row, rowIndex) =>
-      row.map((cell, colIndex) => ({
-        ...cell,
-        isHighlighted: 
-          rowIndex === selectedRow || 
-          colIndex === selectedCol || 
-          (Math.floor(rowIndex / 3) === Math.floor(selectedRow / 3) && 
-           Math.floor(colIndex / 3) === Math.floor(selectedCol / 3)) ||
-          (selectedValue !== 0 && cell.value === selectedValue),
-        isSelected: rowIndex === selectedRow && colIndex === selectedCol,
-      }))
-    );
-    return newGrid;
-  }, []);
-
-  // Handle cell click
-  const handleCellClick = useCallback((row: number, col: number) => {
-    if (!gameState || gameState.isCompleted || gameState.isPaused) return;
-
-    setSelectedNumber(null); // ALWAYS clear number selection from pad
-
-    // If the same cell is clicked again, deselect it
-    if (gameState.selectedCell && gameState.selectedCell.row === row && gameState.selectedCell.col === col) {
-      const gridWithoutHighlight = gameState.grid.map(r => r.map(c => ({...c, isHighlighted: false, isSelected: false})));
-      setGameState(prev => prev ? {...prev, grid: gridWithoutHighlight, selectedCell: null} : null);
-      return;
-    }
-
-    const newGrid = updateHighlighting(gameState.grid, row, col);
-
-    setGameState(prev => prev ? {
-      ...prev,
-      grid: newGrid,
-      selectedCell: { row, col },
-    } : null);
-  }, [gameState, updateHighlighting]);
-
-  // Handle number input with validation
-  const handleNumberClick = useCallback((number: number) => {
-    if (!gameState || !gameState.selectedCell || gameState.isCompleted || gameState.isPaused) return;
-
-    const { row, col } = gameState.selectedCell;
-    const originalCell = gameState.grid[row][col];
-    if (originalCell.isGiven) return;
-
-    const newGrid = gameState.grid.map(rowArr => rowArr.map(cell => ({ ...cell, isShaking: false, isCorrect: false })));
-    const cellToModify = newGrid[row][col];
-
-    if (gameState.isNotesMode) {
-      const newNotes = new Set(cellToModify.notes);
-      if (newNotes.has(number)) {
-        newNotes.delete(number);
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      const response = await fetch('/api/leaderboard');
+      const data = await response.json();
+      if (response.ok) {
+        setLeaderboard(data);
       } else {
-        newNotes.add(number);
+        console.error('Failed to fetch leaderboard:', data.error);
       }
-      cellToModify.notes = newNotes;
-      setGameState(prev => prev ? { ...prev, grid: newGrid } : null);
-      return;
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
     }
-
-    // Place number
-    const isCorrect = gameState.solution[row][col] === number;
-    let newMistakes = gameState.mistakes;
-    let newCorrectStreak = points;
-    let newScore = score;
-    
-    cellToModify.value = number;
-    cellToModify.notes = new Set();
-
-    if (!isCorrect) {
-      newMistakes++;
-      newCorrectStreak = 0;
-      newScore = Math.max(0, score - getBasePoint(gameState.difficulty));
-      cellToModify.isError = true;
-      cellToModify.isShaking = true;
-    } else {
-      newCorrectStreak++;
-      newScore = score + getBasePoint(gameState.difficulty) * newCorrectStreak;
-      cellToModify.isCorrect = true;
-      cellToModify.isError = false;
-    }
-    
-    setPoints(newCorrectStreak);
-    setScore(newScore);
-
-    const isCompleted = checkCompletion(newGrid.map(r => r.map(c => c.value)));
-
-    setGameState(prev => prev ? {
-        ...prev,
-        grid: newGrid,
-        mistakes: newMistakes,
-        isCompleted: isCompleted
-    } : null);
-
-    if (!isCorrect) {
-        setTimeout(() => {
-            setGameState(prev => {
-                if (!prev) return prev;
-                const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
-                gridCopy[row][col].isShaking = false;
-                return { ...prev, grid: gridCopy };
-            });
-        }, 400);
-    } else {
-         setTimeout(() => {
-            setGameState(prev => {
-                if (!prev) return prev;
-                const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
-                gridCopy[row][col].isCorrect = false;
-                return { ...prev, grid: updateHighlighting(gridCopy, row, col) };
-            });
-        }, 300);
-    }
-  }, [gameState, points, score, sudokuGenerator, checkCompletion, updateHighlighting]);
-
-  // Handle erase
-  const handleErase = useCallback(() => {
-    if (!gameState || !gameState.selectedCell || gameState.isCompleted || gameState.isPaused) return;
-
-    const { row, col } = gameState.selectedCell;
-    const cell = gameState.grid[row][col];
-    if (cell.isGiven) return;
-
-    const newGrid = [...gameState.grid];
-    newGrid[row][col] = { ...cell, value: 0, notes: new Set(), isError: false, isCorrect: false };
-    
-    setGameState(prev => prev ? {
-      ...prev,
-      grid: updateHighlighting(newGrid, row, col),
-    } : null);
-  }, [gameState, updateHighlighting]);
-
-  // Handle notes toggle
-  const handleNotesToggle = useCallback(() => {
-    if (!gameState || gameState.isCompleted || gameState.isPaused) return;
-
-    setGameState(prev => prev ? {
-      ...prev,
-      isNotesMode: !prev.isNotesMode
-    } : null);
-  }, [gameState]);
-
-  // Handle hint
-  const handleHint = useCallback(() => {
-    if (!gameState || gameState.isCompleted || gameState.isPaused) return;
-    if (gameState.hintsUsed >= maxHints) return;
-
-    let emptyCell: {row: number, col: number} | null = null;
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        if (gameState.grid[r][c].value === 0) {
-          emptyCell = { row: r, col: c };
-          break;
-        }
-      }
-      if (emptyCell) break;
-    }
-
-    if (!emptyCell) return;
-
-    const { row, col } = emptyCell;
-    const correctValue = gameState.solution[row][col];
-
-    const newGrid = [...gameState.grid];
-    newGrid[row][col] = { ...newGrid[row][col], value: correctValue, isCorrect: true, notes: new Set() };
-    
-    const newHintsUsed = gameState.hintsUsed + 1;
-    const isCompleted = checkCompletion(newGrid.map(r => r.map(c => c.value)));
-
-    setGameState(prev => prev ? {
-        ...prev,
-        grid: newGrid,
-        hintsUsed: newHintsUsed,
-        isCompleted: isCompleted,
-    } : null);
-
-    setTimeout(() => {
-        setGameState(prev => {
-            if (!prev) return prev;
-            const gridCopy = prev.grid.map(r => r.map(c => ({ ...c })));
-            gridCopy[row][col].isCorrect = false;
-            return { ...prev, grid: updateHighlighting(gridCopy, row, col), selectedCell: {row, col} };
-        });
-    }, 300);
-  }, [gameState, maxHints, checkCompletion, updateHighlighting]);
-
-  // Handle pause toggle
-  const handlePauseToggle = useCallback(() => {
-    if (!gameState || gameState.isCompleted) return;
-
-    setGameState(prev => prev ? {
-      ...prev,
-      isPaused: !prev.isPaused,
-      startTime: prev.isPaused ? Date.now() - prev.elapsedTime * 1000 : prev.startTime
-    } : null);
-  }, [gameState]);
-
-  // Handle restart
-  const handleRestart = useCallback(() => {
-    if (!gameState) return;
-    initializeGame(gameState.difficulty);
-  }, [gameState, initializeGame]);
-
-  // Handle new game
-  const handleNewGame = useCallback(() => {
-    setShowDifficultySelector(true);
-    setGameState(null);
   }, []);
 
-  // Start game with selected difficulty
-  const handleStartGame = useCallback((difficulty: Difficulty) => {
-    initializeGame(difficulty);
-    setShowDifficultySelector(false);
-  }, [initializeGame]);
-
-  // Handle number pad click for highlighting
-  const handlePadNumberSelect = useCallback((number: number) => {
-    if (!gameState) return;
-
-    // Toggle off if same number is clicked
-    if (selectedNumber === number) {
-      setSelectedNumber(null);
-      const gridWithoutHighlight = gameState.grid.map(r => r.map(c => ({...c, isHighlighted: false})));
-      setGameState(prev => prev ? {...prev, grid: gridWithoutHighlight} : null);
-      return;
-    }
-
-    setSelectedNumber(number);
-    const newGrid = gameState.grid.map(row =>
-      row.map(cell => ({
-        ...cell,
-        isHighlighted: cell.value === number && number !== 0
-      }))
-    );
-    // Clear selected cell when highlighting from number pad
-    setGameState(prev => prev ? {
-      ...prev,
-      grid: newGrid,
-      selectedCell: null
-    } : null);
-  }, [gameState, selectedNumber]);
-
-  // Đọc token từ localStorage khi load app
   useEffect(() => {
+    fetchLeaderboard();
     const token = localStorage.getItem('token');
-    const username = localStorage.getItem('username');
-    if (token && username) setUser({ username, token });
-  }, []);
-
-  // Xử lý callback từ Google OAuth
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const username = urlParams.get('username');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const expirationTime = payload.exp * 1000;
+        if (Date.now() < expirationTime) {
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
+          }
+        } else {
+          handleLogout();
+        }
+      } catch (error) {
+        console.error("Token validation failed", error);
+        handleLogout();
+      }
+    }
     
-    if (token && username) {
-      setUser({ username, token });
-      localStorage.setItem('token', token);
-      localStorage.setItem('username', username);
-      // Clean up the URL
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    const urlUsername = params.get('username');
+    const urlScore = params.get('score');
+    const urlGames = params.get('games');
+
+    if (urlToken && urlUsername) {
+      const newUser: User = { 
+        username: urlUsername,
+        score: urlScore ? parseInt(urlScore, 10) : 0,
+        games: urlGames ? parseInt(urlGames, 10) : 0
+      };
+      localStorage.setItem('token', urlToken);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      setUser(newUser);
       window.history.replaceState({}, document.title, "/");
     }
+  }, [fetchLeaderboard, handleLogout]);
+
+  const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard') => {
+    const { puzzle, solution: newSolution } = generateSudoku(newDifficulty);
+    setDifficulty(newDifficulty);
+    setGrid(puzzle.map(row => [...row]));
+    setInitialGrid(puzzle.map(row => [...row]));
+    setSolution(newSolution);
+    setSelectedCell(null);
+    setConflicts(Array(9).fill(null).map(() => Array(9).fill(false)));
   }, []);
 
-  // Lấy bảng xếp hạng khi showDifficultySelector hoặc khi đang chơi game
   useEffect(() => {
-    // Chỉ fetch khi vào màn chọn độ khó hoặc khi vừa hoàn thành game
-    if (!showDifficultySelector && !(gameState && gameState.isCompleted)) return;
-    setLoadingLeaderboard(true);
-    const token = localStorage.getItem('token');
-    fetch('/api/leaderboard', {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then(res => res.json())
-      .then(data => {
-        setLeaderboard(data.leaderboard || []);
-        setUserRank(data.user || null);
-      })
-      .finally(() => setLoadingLeaderboard(false));
-  }, [showDifficultySelector, user, gameState?.isCompleted]);
+    startNewGame(difficulty);
+  }, [startNewGame, difficulty]);
 
-  // Gửi điểm lên server khi hoàn thành game
-  useEffect(() => {
-    if (!gameState?.isCompleted || !user) return;
-    fetch('/api/score', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: user.token, score }),
-    });
-  }, [gameState?.isCompleted, user, score]);
+  const switchAuthMode = (mode: AuthMode) => {
+    setAuthMode(mode);
+    setAuthError(null);
+    setAuthMessage(null);
+  };
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (otpCooldown > 0) {
-      timer = setTimeout(() => setOtpCooldown(otpCooldown - 1), 1000);
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setAuthError(null);
+    setAuthMessage(null);
+    const form = e.currentTarget;
+    const username = (form.elements.namedItem('username') as HTMLInputElement).value;
+    const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Đăng nhập thất bại');
+      }
+      localStorage.setItem('token', data.token);
+      const userData = { username: data.username, score: data.score, games: data.games };
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      form.reset();
+      fetchLeaderboard();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Lỗi không xác định";
+      setAuthError(message);
     }
-    return () => clearTimeout(timer);
-  }, [otpCooldown]);
+  }
 
-  // Đăng ký
-  async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
+  async function handleRegistrationStart(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setAuthError(null);
     setAuthMessage(null);
@@ -418,362 +156,270 @@ function App() {
     const username = (form.elements.namedItem('username') as HTMLInputElement).value;
     const password = (form.elements.namedItem('password') as HTMLInputElement).value;
     const email = (form.elements.namedItem('email') as HTMLInputElement).value;
-    const otp = (form.elements.namedItem('otp') as HTMLInputElement)?.value;
-
-    if (!otp) {
-      setAuthError("Vui lòng lấy và nhập mã OTP.");
-      return;
-    }
 
     try {
-      const res = await fetch('/api/register', {
+      const response = await fetch('/api/register/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, email, otp })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setAuthError(data.error || 'Đăng ký thất bại');
-        return;
-      }
-      setAuthMode('login');
-      setAuthMessage(data.message);
-      setOtpSent(false);
-    } catch {
-      setAuthError('Lỗi kết nối server');
-    }
-  }
-
-  async function handleSendOtp() {
-    const emailInput = document.getElementById('reg-email') as HTMLInputElement;
-    const email = emailInput?.value;
-    
-    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      setAuthError('Vui lòng nhập một địa chỉ email hợp lệ.');
-      return;
-    }
-    setAuthError(null);
-    setAuthMessage(null);
-
-    try {
-      const res = await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ username, password, email }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setAuthError(data.error || 'Không thể gửi OTP.');
-        return;
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Có lỗi xảy ra.');
       }
 
       setAuthMessage(data.message);
-      setOtpSent(true);
-      setOtpCooldown(60); // 60 seconds cooldown
-    } catch {
-      setAuthError('Lỗi kết nối server.');
+      setUsernameForVerification(username);
+      setShowOtpForm(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Lỗi không xác định';
+      setAuthError(message);
     }
   }
 
-  // Đăng nhập
-  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+  async function handleRegistrationConfirm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setAuthError(null);
+    setAuthMessage(null);
     const form = e.currentTarget;
-    const username = (form.elements.namedItem('username') as HTMLInputElement).value;
-    const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+    const otp = (form.elements.namedItem('otp') as HTMLInputElement).value;
+
     try {
-      const res = await fetch('/api/login', {
+      const response = await fetch('/api/register/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username: usernameForVerification, otp }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setAuthError(data.error || 'Đăng nhập thất bại');
-        return;
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Có lỗi xảy ra.');
       }
-      setUser({ username: data.username, token: data.token });
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('username', data.username);
-      setShowAuth(false);
-    } catch {
-      setAuthError('Lỗi kết nối server');
+      
+      setAuthMessage(data.message);
+      setShowOtpForm(false);
+      setUsernameForVerification('');
+      setAuthMode('login');
+      fetchLeaderboard();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Lỗi không xác định';
+      setAuthError(message);
     }
   }
 
-  function handleLogout() {
-    setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-  }
+  const handleCellClick = (row: number, col: number) => {
+    if (initialGrid[row][col] === 0) {
+      if (selectedCell && selectedCell.row === row && selectedCell.col === col) {
+        setSelectedCell(null);
+      } else {
+        setSelectedCell({ row, col });
+      }
+    }
+  };
 
-  // Nút đăng nhập/đăng xuất luôn ở góc phải trên cùng
-  const renderAuthButton = () => (
-    <div className="fixed top-2 right-2 z-50 flex gap-2">
-      {user ? (
-        <div className="flex items-center gap-2 bg-white/90 rounded-xl px-3 py-1 shadow border border-gray-200">
-          <span className="font-semibold text-purple-700">{user.username}</span>
-          <button onClick={handleLogout} className="text-xs text-red-500 font-bold hover:underline">Đăng xuất</button>
-        </div>
-      ) : (
-        <button onClick={() => { setShowAuth(true); setAuthMode('login'); }} className="bg-purple-600 text-white font-bold rounded-full shadow px-4 py-2 text-sm hover:bg-purple-700 transition-all">Đăng nhập / Đăng ký</button>
-      )}
-      {showAuth && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-xs relative animate-pop">
-            <button className="absolute top-2 right-2 text-xl font-bold text-gray-500 hover:text-gray-700" onClick={() => { setShowAuth(false); setOtpSent(false); setAuthError(null); setAuthMessage(null); }}>&times;</button>
-            <div className="mb-4 flex gap-2 justify-center">
-              <button onClick={() => { setAuthMode('login'); setAuthError(null); setAuthMessage(null); }} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='login' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng nhập</button>
-              <button onClick={() => { setAuthMode('register'); setAuthError(null); setAuthMessage(null); setOtpSent(false); }} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='register' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng ký</button>
-            </div>
-            {authMessage && <div className="text-green-600 text-xs mb-2 text-center">{authMessage}</div>}
-            {authError && <div className="text-red-500 text-xs text-center mb-2">{authError}</div>}
-            
-            {authMode === 'login' ? (
-              <form onSubmit={handleLogin} className="space-y-3">
-                <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng nhập</button>
-              </form>
-            ) : (
-              <form onSubmit={handleRegister} className="space-y-3">
-                <input id="reg-username" name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                <div className="flex items-center gap-2">
-                  <input id="reg-email" name="email" type="email" required placeholder="Email" className="w-full border rounded px-3 py-2" />
-                  <button 
-                    type="button" 
-                    onClick={handleSendOtp}
-                    disabled={otpCooldown > 0}
-                    className="text-xs text-white font-bold rounded px-2 py-1 whitespace-nowrap bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  >
-                    {otpCooldown > 0 ? `Gửi lại (${otpCooldown}s)` : 'Gửi mã'}
-                  </button>
-                </div>
-                 {otpSent && (
-                  <input name="otp" required placeholder="Mã OTP 6 số" className="w-full border rounded px-3 py-2" maxLength={6} />
-                )}
-                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng ký</button>
-                <div className="relative my-3">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="bg-white px-2 text-gray-500">Hoặc</span>
-                  </div>
-                </div>
-                <a 
-                  href="/api/auth/google" 
-                  className="w-full flex items-center justify-center gap-2 py-2 border border-gray-300 rounded hover:bg-gray-100 transition"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 48 48">
-                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.42-4.55H24v8.51h12.8c-.57 5.4-4.5 9.4-9.8 9.4-6.1 0-11.05-4.95-11.05-11.05s4.95-11.05 11.05-11.05c3.45 0 6.33 1.4 8.29 3.25l6.02-6.02C36.33 3.33 30.65 0 24 0 10.75 0 0 10.75 0 24s10.75 24 24 24c13.01 0 23.4-10.08 23.4-23.45 0-.5-.04-.98-.1-1.45z"></path>
-                  </svg>
-                  <span className="text-sm font-medium text-gray-700">Đăng nhập với Google</span>
-                </a>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+  const handleNumberClick = (num: number) => {
+    if (!selectedCell) return;
+    const { row, col } = selectedCell;
+    const newGrid = grid.map(r => [...r]);
+    newGrid[row][col] = num;
+    setGrid(newGrid);
+
+    const newConflicts = Array(9).fill(null).map(() => Array(9).fill(false));
+    setConflicts(newConflicts);
+  };
+
+  const calculateScore = useCallback(() => {
+    const basePoints = { easy: 10, medium: 20, hard: 30 };
+    return basePoints[difficulty];
+  }, [difficulty]);
+
+  const updateScore = useCallback(async (scoreToAdd: number) => {
+    if (!user) return;
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch('/api/score', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ score: scoreToAdd }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        fetchLeaderboard();
+      } else {
+        console.error("Failed to update score", data.error);
+      }
+    } catch (error) {
+      console.error("Error updating score", error);
+    }
+  }, [user, fetchLeaderboard]);
+
+  const handleSolve = () => {
+    const isSolved = checkSolution(grid, solution);
+    if (isSolved) {
+      console.log("Sudoku solved!");
+      const newScore = calculateScore();
+      if (user) {
+        updateScore(newScore);
+      }
+      setShowWinDialog(true);
+    }
+  };
+  
+  const GoogleLoginButton = () => (
+    <a href={googleLoginUrl} className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+      <svg className="w-5 h-5 mr-2" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 64.5C308.6 106.5 280.2 96 248 96c-88.8 0-160.1 71.1-160.1 160s71.3 160 160.1 160c98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 26.9 3.9 41.4z"></path></svg>
+      Đăng nhập với Google
+    </a>
   );
 
-  if (showDifficultySelector) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center p-4">
-        {renderAuthButton()}
-        <div className="w-full max-w-2xl mx-auto flex flex-col md:flex-row gap-8 items-start justify-center">
-          <div className="flex-1 w-full max-w-md">
-            <DifficultySelector onStartGame={handleStartGame} />
-          </div>
-          <div className="flex-1 w-full max-w-md mt-8 md:mt-0">
-            {loadingLeaderboard ? (
-              <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
-            ) : (
-              <Leaderboard leaderboard={leaderboard} userRank={userRank} />
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!gameState) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-4 border-purple-500 mx-auto"></div>
-          <p className="mt-4 text-white text-lg">Generating puzzle...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-1 sm:p-2">
-      {renderAuthButton()}
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-2 sm:mb-4">
-          <h1 className="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent mb-1 sm:mb-2">
-            Sudoku Master
-          </h1>
-          <p className="text-gray-300 text-base sm:text-lg">Challenge your mind with beautiful puzzles</p>
-          <div className="mt-2 text-yellow-300 font-bold text-lg sm:text-xl">Liên tiếp đúng: {points}</div>
-          <div className="mt-1 text-green-300 font-bold text-base sm:text-lg">Điểm: {score}</div>
-        </div>
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-6 xl:items-start">
-          {/* Left Side: Leaderboard and Game Controls */}
-          <div className="xl:order-1 mb-2 xl:mb-0 h-full flex flex-col justify-between">
-            <div className="flex-grow">
-              {loadingLeaderboard ? (
-                <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
-              ) : (
-                <Leaderboard leaderboard={leaderboard} userRank={userRank} />
-              )}
-            </div>
-            <GameControls
-              elapsedTime={gameState.elapsedTime}
-              mistakes={gameState.mistakes}
-              hintsUsed={gameState.hintsUsed}
-              maxHints={maxHints}
-              isPaused={gameState.isPaused}
-              isCompleted={gameState.isCompleted}
-              difficulty={gameState.difficulty}
-              onPauseToggle={handlePauseToggle}
-              onRestart={handleRestart}
-              onHint={handleHint}
-              onNewGame={handleNewGame}
-            />
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-sans relative">
+      <WinDialog 
+        isOpen={showWinDialog}
+        onClose={() => {
+          setShowWinDialog(false);
+          startNewGame(difficulty);
+        }}
+        score={calculateScore()}
+      />
+      
+      <div 
+        className={`fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity ${showHowToPlay ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setShowHowToPlay(false)}
+      ></div>
+
+      <div className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-8 rounded-lg shadow-2xl z-50 w-11/12 max-w-lg transition-all ${showHowToPlay ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
+        <h2 className="text-2xl font-bold mb-4 text-center">Cách chơi Sudoku</h2>
+        <ul className="list-disc list-inside space-y-2 text-gray-700">
+          <li>Mục tiêu là lấp đầy lưới 9x9 với các chữ số sao cho mỗi cột, mỗi hàng và mỗi trong số chín lưới con 3x3 tạo nên lưới chứa tất cả các chữ số từ 1 đến 9.</li>
+          <li>Chọn một ô trống và sử dụng bàn phím số bên dưới để điền số.</li>
+          <li>Bạn chỉ có thể điền vào các ô trống (ô màu trắng).</li>
+          <li>Khi bạn giải đúng toàn bộ câu đố, bạn sẽ nhận được điểm!</li>
+        </ul>
+        <button onClick={() => setShowHowToPlay(false)} className="mt-6 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition">Đã hiểu</button>
+      </div>
+
+      <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-4 items-start">
+        {/* Left Column: Leaderboard & Game Controls */}
+        <div className="w-full md:w-1/4 lg:w-1/3 flex flex-col gap-4 items-center self-stretch">
+           <GameControls 
+            onNewGame={() => startNewGame(difficulty)} 
+            onSolve={handleSolve} 
+            onHowToPlay={() => setShowHowToPlay(true)}
+          />
+          <div className="flex flex-col items-center justify-start h-full w-full bg-white p-6 rounded-lg shadow-lg">
+            <Leaderboard leaderboard={leaderboard} currentUser={user?.username} />
           </div>
-          {/* Sudoku Grid - Center */}
-          <div className="xl:col-span-2 xl:order-2 mb-2 xl:mb-0 flex items-center justify-center">
-            {gameState.isPaused ? (
-              <div className="bg-white/95 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-6 sm:p-12 text-center border border-white/20">
-                <h2 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2 sm:mb-4">Game Paused</h2>
-                <p className="text-gray-600 mb-4 sm:mb-8 text-base sm:text-lg">Take a break and come back when you're ready!</p>
-                <button
-                  onClick={handlePauseToggle}
-                  className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-2 sm:py-4 px-4 sm:px-8 rounded-xl sm:rounded-2xl hover:from-green-600 hover:to-green-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
+        </div>
+
+        {/* Center Column: Sudoku Grid */}
+        <div className="w-full md:w-1/2 lg:w-1/3 flex items-start justify-center px-2">
+          <div className="w-full max-w-[500px] mx-auto">
+            <SudokuGrid grid={grid} initialGrid={initialGrid} onCellClick={handleCellClick} selectedCell={selectedCell} conflicts={conflicts} />
+          </div>
+        </div>
+
+        {/* Right Column: NumberPad & Auth */}
+        <div className="w-full md:w-1/4 lg:w-1/3 flex flex-col items-center px-2 self-stretch">
+          <div className="w-full max-w-sm bg-white p-6 rounded-lg shadow-lg">
+            {user ? (
+              <div className="text-center">
+                <h2 className="text-xl font-bold">Xin chào, {user.username}!</h2>
+                <p className="text-gray-600">Điểm: {user.score}</p>
+                <p className="text-gray-600">Số ván đã chơi: {user.games}</p>
+                <DifficultySelector onDifficultyChange={setDifficulty} />
+                <button 
+                  onClick={handleLogout} 
+                  className="mt-4 w-full bg-red-500 text-white py-2 rounded hover:bg-red-600 transition"
                 >
-                  Resume Game
+                  Đăng xuất
                 </button>
               </div>
             ) : (
-              <SudokuGrid
-                grid={gameState.grid}
-                selectedCell={gameState.selectedCell}
-                onCellClick={handleCellClick}
-                selectedNumber={selectedNumber}
-              />
-            )}
-          </div>
-          {/* Right Side: Number Pad Only */}
-          <div className="xl:order-3 h-full flex items-center justify-center">
-            {!gameState.isPaused && (
-                <NumberPad
-                  onNumberClick={handleNumberClick}
-                  onEraseClick={handleErase}
-                  onNotesToggle={handleNotesToggle}
-                  isNotesMode={gameState.isNotesMode}
-                  selectedCell={gameState.selectedCell}
-                  onPadNumberSelect={handlePadNumberSelect}
-                />
-            )}
-          </div>
-        </div>
-      </div>
-      {gameState.isCompleted && (
-        <WinDialog
-          elapsedTime={gameState.elapsedTime}
-          mistakes={gameState.mistakes}
-          hintsUsed={gameState.hintsUsed}
-          difficulty={gameState.difficulty}
-          onNewGame={handleNewGame}
-          onPlayAgain={handleRestart}
-        />
-      )}
-      {/* Nút và popup luật chơi & Hướng dẫn */}
-      <div className="fixed bottom-2 right-2 z-50 flex flex-col items-end gap-2">
-        <button
-          className="bg-sky-600 text-white font-bold rounded-full shadow-lg px-4 py-2 text-sm hover:bg-sky-700 transition-all"
-          onClick={() => setShowHowToPlay(true)}
-        >
-          Hướng dẫn chơi
-        </button>
-        <button
-          className="bg-purple-600 text-white font-bold rounded-full shadow-lg px-4 py-2 text-sm hover:bg-purple-700 transition-all"
-          onClick={() => setShowRules(true)}
-        >
-          Luật chơi
-        </button>
-      </div>
+              <div>
+                <div className="flex border-b border-gray-200">
+                  <button onClick={() => switchAuthMode('login')} className={`flex-1 py-2 text-sm font-medium ${authMode === 'login' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                    Đăng nhập
+                  </button>
+                  <button onClick={() => switchAuthMode('register')} className={`flex-1 py-2 text-sm font-medium ${authMode === 'register' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                    Đăng ký
+                  </button>
+                </div>
+                <div className="p-4">
+                  {authError && <div className="mb-3 p-3 bg-red-100 text-red-700 text-sm rounded-md">{authError}</div>}
+                  {authMessage && <div className="mb-3 p-3 bg-green-100 text-green-700 text-sm rounded-md">{authMessage}</div>}
+                  
+                  {authMode === 'login' && !showOtpForm && (
+                     <form onSubmit={handleLogin} className="space-y-4">
+                       <div>
+                         <label htmlFor="login-username" className="text-sm font-medium text-gray-700 sr-only">Username</label>
+                         <input id="login-username" name="username" type="text" required className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Tên đăng nhập" />
+                       </div>
+                       <div>
+                         <label htmlFor="login-password" className="text-sm font-medium text-gray-700 sr-only">Password</label>
+                         <input id="login-password" name="password" type="password" required className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Mật khẩu" />
+                       </div>
+                       <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Đăng nhập</button>
+                        <div className="my-4 flex items-center">
+                          <div className="flex-grow border-t border-gray-300"></div>
+                          <span className="flex-shrink mx-2 text-gray-500 text-sm">hoặc</span>
+                          <div className="flex-grow border-t border-gray-300"></div>
+                        </div>
+                       <GoogleLoginButton />
+                     </form>
+                  )}
 
-      {/* Popup Hướng dẫn chơi */}
-      {showHowToPlay && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-md relative animate-pop">
-            <button className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-xl font-bold text-gray-700 shadow" onClick={() => setShowHowToPlay(false)}>&times;</button>
-            <div className="font-bold text-lg text-purple-700 mb-3 text-center">Hướng Dẫn Cho Người Mới Bắt Đầu</div>
-            <div className="text-sm text-gray-800 space-y-3">
-              <p>Chào mừng bạn đến với Sudoku! Đây là một trò chơi giải đố logic rất thú vị. Mục tiêu của bạn rất đơn giản: <strong>lấp đầy tất cả các ô trống bằng các số từ 1 đến 9.</strong></p>
-              <div>
-                <p className="font-bold mb-1">Chỉ cần nhớ 3 quy tắc VÀNG:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Số bạn điền không được trùng với bất kỳ số nào trên cùng <strong>HÀNG NGANG</strong>.</li>
-                  <li>Số bạn điền không được trùng với bất kỳ số nào trên cùng <strong>CỘT DỌC</strong>.</li>
-                  <li>Số bạn điền không được trùng với bất kỳ số nào trong cùng <strong>Ô VUÔNG LỚN (3x3)</strong>.</li>
-                </ul>
+                  {authMode === 'register' && !showOtpForm && (
+                    <form onSubmit={handleRegistrationStart} className="space-y-4">
+                      <div>
+                        <label htmlFor="reg-username" className="text-sm font-medium text-gray-700 sr-only">Username</label>
+                        <input id="reg-username" name="username" type="text" required className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Tên đăng nhập" />
+                      </div>
+                       <div>
+                         <label htmlFor="reg-email" className="text-sm font-medium text-gray-700 sr-only">Email</label>
+                         <input id="reg-email" name="email" type="email" required className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Địa chỉ email" />
+                       </div>
+                      <div>
+                        <label htmlFor="reg-password" className="text-sm font-medium text-gray-700 sr-only">Password</label>
+                        <input id="reg-password" name="password" type="password" required className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Mật khẩu" />
+                      </div>
+                      <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Đăng ký</button>
+                       <div className="my-4 flex items-center">
+                          <div className="flex-grow border-t border-gray-300"></div>
+                          <span className="flex-shrink mx-2 text-gray-500 text-sm">hoặc</span>
+                          <div className="flex-grow border-t border-gray-300"></div>
+                        </div>
+                       <GoogleLoginButton />
+                    </form>
+                  )}
+
+                  {showOtpForm && (
+                    <form onSubmit={handleRegistrationConfirm} className="space-y-4">
+                      <p className="text-sm text-center">Một mã OTP đã được gửi tới email của bạn. Vui lòng nhập mã để xác thực.</p>
+                      <div>
+                        <label htmlFor="otp" className="text-sm font-medium text-gray-700 sr-only">OTP</label>
+                        <input id="otp" name="otp" type="text" required maxLength={6} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Nhập mã OTP" />
+                      </div>
+                      <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Xác nhận và Đăng ký</button>
+                      <button type="button" onClick={() => setShowOtpForm(false)} className="w-full text-center text-sm text-gray-600 hover:text-gray-800 mt-2">Quay lại</button>
+                    </form>
+                  )}
+
+                </div>
               </div>
-              <div>
-                <p className="font-bold mb-1">Mẹo chơi cực dễ:</p>
-                 <ul className="list-disc pl-5 space-y-1">
-                  <li><strong>Bắt đầu từ nơi dễ nhất:</strong> Tìm những hàng, cột, hoặc ô vuông lớn đã có nhiều số nhất. Việc tìm ra số còn thiếu sẽ dễ dàng hơn rất nhiều!</li>
-                  <li><strong>Dùng Ghi Chú (Notes):</strong> Nếu chưa chắc chắn về một ô, hãy bật chế độ "Notes" và điền những con số bạn đang phân vân vào đó. Đây là cách các cao thủ sử dụng để loại trừ và tìm ra đáp án đúng.</li>
-                </ul>
-              </div>
-              <p className="text-center font-semibold pt-2">Chúc bạn có những giờ phút giải đố vui vẻ!</p>
+            )}
+            <div className='mt-4'>
+             <NumberPad onNumberClick={handleNumberClick} />
             </div>
           </div>
         </div>
-      )}
-
-      {/* Popup Luật chơi */}
-      {showRules && (
-         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-sm relative animate-pop">
-            <button className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-xl font-bold text-gray-700 shadow" onClick={() => setShowRules(false)}>&times;</button>
-            <div className="font-bold text-lg text-purple-700 mb-3 text-center">Quy Tắc Tính Điểm</div>
-            <div className="text-sm text-gray-800 space-y-3">
-              <div>
-                <p className="font-semibold text-green-600 mb-1">⭐ Điểm Thưởng:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Mỗi lần bạn điền đúng một số, bạn sẽ nhận được điểm.</li>
-                  <li><strong>Combo Thưởng:</strong> Điền đúng liên tiếp nhiều số sẽ giúp bạn nhận được điểm thưởng nhân lên, càng về sau điểm càng cao!</li>
-                </ul>
-              </div>
-               <div>
-                <p className="font-semibold text-red-600 mb-1">💔 Mất Điểm:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Mỗi lần điền sai, bạn sẽ bị trừ một chút điểm. Đừng lo, điểm của bạn sẽ không bao giờ bị âm.</li>
-                </ul>
-              </div>
-              <div>
-                <p className="font-semibold text-yellow-600 mb-1">💡 Dùng Gợi Ý (Hint):</p>
-                <ul className="list-disc pl-5 space-y-1">
-                    <li>Sử dụng "Hint" sẽ không được cộng điểm cho ô đó.</li>
-                    <li>Số lượt "Hint" là có hạn tùy theo độ khó bạn chọn.</li>
-                </ul>
-              </div>
-              <p className="text-center font-semibold pt-2">Hãy chơi thật chiến lược để đạt điểm cao nhất nhé!</p>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
