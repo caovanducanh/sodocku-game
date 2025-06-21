@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import SudokuGrid from './components/SudokuGrid';
-import NumberPad from './components/NumberPad';
-import GameControls from './components/GameControls';
-import { generateSudoku } from './utils/sudokuGenerator';
+import { SudokuGrid } from './components/SudokuGrid';
+import { NumberPad } from './components/NumberPad';
+import { GameControls } from './components/GameControls';
+import { generateSudoku, checkSolution } from './utils/sudokuGenerator';
 import DifficultySelector from './components/DifficultySelector';
 import Leaderboard from './components/Leaderboard';
 import WinDialog from './components/WinDialog';
-import { SudokuCell, Difficulty } from './types/sudoku';
 
 type User = {
   username: string;
@@ -17,25 +16,21 @@ type User = {
 type AuthMode = 'login' | 'register';
 
 function App() {
-  const [grid, setGrid] = useState<SudokuCell[][]>([]);
+  const [grid, setGrid] = useState<number[][]>([]);
   const [initialGrid, setInitialGrid] = useState<number[][]>([]);
   const [solution, setSolution] = useState<number[][]>([]);
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
-  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
+  const [conflicts, setConflicts] = useState<boolean[][]>([]);
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [authError, setAuthError] = useState<string | null>(null);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [showWinDialog, setShowWinDialog] = useState(false);
-  const [leaderboard, setLeaderboard] = useState<{ username: string; score: number }[]>([]);
+  const [leaderboard, setLeaderboard] = useState<{ member: string; score: number }[]>([]);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [showOtpForm, setShowOtpForm] = useState(false);
   const [usernameForVerification, setUsernameForVerification] = useState('');
-  const [isNotesMode, setIsNotesMode] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [mistakes, setMistakes] = useState(0);
-  const [hintsUsed, setHintsUsed] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
   
   const googleLoginUrl = `/api/auth/google`;
 
@@ -103,32 +98,14 @@ function App() {
     }
   }, [fetchLeaderboard, handleLogout]);
 
-  const startNewGame = useCallback((newDifficulty: Difficulty) => {
+  const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard') => {
     const { puzzle, solution: newSolution } = generateSudoku(newDifficulty);
     setDifficulty(newDifficulty);
-    
-    // Convert number[][] to SudokuCell[][]
-    const sudokuGrid: SudokuCell[][] = puzzle.map(row => 
-      row.map(cell => ({
-        value: cell,
-        isGiven: cell !== 0,
-        notes: new Set<number>(),
-        isHighlighted: false,
-        isError: false,
-        isSelected: false,
-        isShaking: false,
-        isCorrect: false,
-      }))
-    );
-    
-    setGrid(sudokuGrid);
+    setGrid(puzzle.map(row => [...row]));
     setInitialGrid(puzzle.map(row => [...row]));
     setSolution(newSolution);
     setSelectedCell(null);
-    setElapsedTime(0);
-    setMistakes(0);
-    setHintsUsed(0);
-    setIsPaused(false);
+    setConflicts(Array(9).fill(null).map(() => Array(9).fill(false)));
   }, []);
 
   useEffect(() => {
@@ -244,51 +221,56 @@ function App() {
   const handleNumberClick = (num: number) => {
     if (!selectedCell) return;
     const { row, col } = selectedCell;
-    const newGrid = grid.map(r => r.map(cell => ({ ...cell })));
-    const cellToModify = newGrid[row][col];
-    
-    if (isNotesMode) {
-      const newNotes = new Set(cellToModify.notes);
-      if (newNotes.has(num)) {
-        newNotes.delete(num);
+    const newGrid = grid.map(r => [...r]);
+    newGrid[row][col] = num;
+    setGrid(newGrid);
+
+    const newConflicts = Array(9).fill(null).map(() => Array(9).fill(false));
+    setConflicts(newConflicts);
+  };
+
+  const calculateScore = useCallback(() => {
+    const basePoints = { easy: 10, medium: 20, hard: 30 };
+    return basePoints[difficulty];
+  }, [difficulty]);
+
+  const updateScore = useCallback(async (scoreToAdd: number) => {
+    if (!user) return;
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch('/api/score', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ score: scoreToAdd }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        fetchLeaderboard();
       } else {
-        newNotes.add(num);
+        console.error("Failed to update score", data.error);
       }
-      cellToModify.notes = newNotes;
-    } else {
-      cellToModify.value = num;
-      cellToModify.notes = new Set();
+    } catch (error) {
+      console.error("Error updating score", error);
     }
-    
-    setGrid(newGrid);
-  };
+  }, [user, fetchLeaderboard]);
 
-  const handleEraseClick = () => {
-    if (!selectedCell) return;
-    const { row, col } = selectedCell;
-    const newGrid = grid.map(r => r.map(cell => ({ ...cell })));
-    const cellToModify = newGrid[row][col];
-    cellToModify.value = 0;
-    cellToModify.notes = new Set();
-    setGrid(newGrid);
-  };
-
-  const handleNotesToggle = () => {
-    setIsNotesMode(!isNotesMode);
-  };
-
-  const handleHint = () => {
-    if (hintsUsed < 3 && selectedCell) {
-      const { row, col } = selectedCell;
-      const newGrid = grid.map(r => r.map(cell => ({ ...cell })));
-      const cellToModify = newGrid[row][col];
-      cellToModify.value = solution[row][col];
-      cellToModify.notes = new Set();
-      setGrid(newGrid);
-      setHintsUsed(hintsUsed + 1);
+  const handleSolve = () => {
+    const isSolved = checkSolution(grid, solution);
+    if (isSolved) {
+      console.log("Sudoku solved!");
+      const newScore = calculateScore();
+      if (user) {
+        updateScore(newScore);
+      }
+      setShowWinDialog(true);
     }
   };
-
+  
   const GoogleLoginButton = () => (
     <a href={googleLoginUrl} className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
       <svg className="w-5 h-5 mr-2" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 64.5C308.6 106.5 280.2 96 248 96c-88.8 0-160.1 71.1-160.1 160s71.3 160 160.1 160c98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 26.9 3.9 41.4z"></path></svg>
@@ -298,22 +280,14 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-sans relative">
-      {showWinDialog && (
-        <WinDialog 
-          elapsedTime={elapsedTime}
-          mistakes={mistakes}
-          hintsUsed={hintsUsed}
-          difficulty={difficulty}
-          onNewGame={() => {
-            setShowWinDialog(false);
-            startNewGame(difficulty);
-          }}
-          onPlayAgain={() => {
-            setShowWinDialog(false);
-            startNewGame(difficulty);
-          }}
-        />
-      )}
+      <WinDialog 
+        isOpen={showWinDialog}
+        onClose={() => {
+          setShowWinDialog(false);
+          startNewGame(difficulty);
+        }}
+        score={calculateScore()}
+      />
       
       <div 
         className={`fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity ${showHowToPlay ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
@@ -335,31 +309,19 @@ function App() {
         {/* Left Column: Leaderboard & Game Controls */}
         <div className="w-full md:w-1/4 lg:w-1/3 flex flex-col gap-4 items-center self-stretch">
            <GameControls 
-            onNewGame={() => startNewGame(difficulty)}
-            elapsedTime={elapsedTime}
-            mistakes={mistakes}
-            hintsUsed={hintsUsed}
-            maxHints={3}
-            isPaused={isPaused}
-            isCompleted={false}
-            difficulty={difficulty}
-            onPauseToggle={() => setIsPaused(!isPaused)}
-            onRestart={() => startNewGame(difficulty)}
-            onHint={handleHint}
+            onNewGame={() => startNewGame(difficulty)} 
+            onSolve={handleSolve} 
+            onHowToPlay={() => setShowHowToPlay(true)}
           />
           <div className="flex flex-col items-center justify-start h-full w-full bg-white p-6 rounded-lg shadow-lg">
-            <Leaderboard leaderboard={leaderboard} />
+            <Leaderboard leaderboard={leaderboard} currentUser={user?.username} />
           </div>
         </div>
 
         {/* Center Column: Sudoku Grid */}
         <div className="w-full md:w-1/2 lg:w-1/3 flex items-start justify-center px-2">
           <div className="w-full max-w-[500px] mx-auto">
-            <SudokuGrid 
-              grid={grid} 
-              selectedCell={selectedCell} 
-              onCellClick={handleCellClick} 
-            />
+            <SudokuGrid grid={grid} initialGrid={initialGrid} onCellClick={handleCellClick} selectedCell={selectedCell} conflicts={conflicts} />
           </div>
         </div>
 
@@ -371,7 +333,7 @@ function App() {
                 <h2 className="text-xl font-bold">Xin chào, {user.username}!</h2>
                 <p className="text-gray-600">Điểm: {user.score}</p>
                 <p className="text-gray-600">Số ván đã chơi: {user.games}</p>
-                <DifficultySelector onStartGame={startNewGame} />
+                <DifficultySelector onDifficultyChange={setDifficulty} />
                 <button 
                   onClick={handleLogout} 
                   className="mt-4 w-full bg-red-500 text-white py-2 rounded hover:bg-red-600 transition"
@@ -453,13 +415,7 @@ function App() {
               </div>
             )}
             <div className='mt-4'>
-             <NumberPad 
-               onNumberClick={handleNumberClick}
-               onEraseClick={handleEraseClick}
-               onNotesToggle={handleNotesToggle}
-               isNotesMode={isNotesMode}
-               selectedCell={selectedCell}
-             />
+             <NumberPad onNumberClick={handleNumberClick} />
             </div>
           </div>
         </div>
