@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import Turnstile from 'react-turnstile';
 import { SudokuGenerator } from './utils/sudokuGenerator';
 import { GameState, SudokuCell, Difficulty } from './types/sudoku';
 import SudokuGrid from './components/SudokuGrid';
@@ -28,6 +29,9 @@ function App() {
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpTurnstileToken, setOtpTurnstileToken] = useState<string | null>(null);
+  const [isHumanVerified, setIsHumanVerified] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(true);
 
   const getBasePoint = (difficulty: Difficulty) => {
     switch (difficulty) {
@@ -513,6 +517,10 @@ function App() {
       setAuthError('Vui lòng nhập một địa chỉ email hợp lệ.');
       return;
     }
+    if (!otpTurnstileToken) {
+        setAuthError('Vui lòng hoàn thành xác thực.');
+        return;
+    }
     setAuthError(null);
     setAuthMessage(null);
 
@@ -520,7 +528,7 @@ function App() {
       const res = await fetch('/api/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, turnstileToken: otpTurnstileToken }),
       });
 
       const data = await res.json();
@@ -625,11 +633,18 @@ function App() {
                   <button 
                     type="button" 
                     onClick={handleSendOtp}
-                    disabled={otpCooldown > 0}
+                    disabled={otpCooldown > 0 || !otpTurnstileToken}
                     className="text-xs text-white font-bold rounded px-2 py-1 whitespace-nowrap bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     {otpCooldown > 0 ? `Gửi lại (${otpCooldown}s)` : 'Gửi mã'}
                   </button>
+                </div>
+                <div className="flex justify-center my-2">
+                    <Turnstile 
+                        sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'} 
+                        onVerify={(token) => setOtpTurnstileToken(token)}
+                        onExpire={() => setOtpTurnstileToken(null)}
+                    />
                 </div>
                  {otpSent && (
                   <input name="otp" required placeholder="Mã OTP 6 số" className="w-full border rounded px-3 py-2" maxLength={6} />
@@ -661,6 +676,40 @@ function App() {
       )}
     </div>
   );
+
+  if (isVerifying) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center p-4 text-white">
+          <h2 className="text-2xl font-bold mb-4">Đang xác thực bạn là người...</h2>
+          <Turnstile 
+              sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'} 
+              onVerify={async (token) => {
+                  const response = await fetch('/api/verify-turnstile', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ token }),
+                  });
+                  const data = await response.json();
+                  if (data.success) {
+                      setIsHumanVerified(true);
+                      setIsVerifying(false);
+                  } else {
+                      alert("Xác thực thất bại. Vui lòng tải lại trang.");
+                  }
+              }}
+          />
+          <p className="mt-4 text-xs text-gray-400">Trang web này được bảo vệ bởi Cloudflare Turnstile.</p>
+      </div>
+    );
+  }
+
+  if (!isHumanVerified) {
+      return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center text-white">
+              <p>Xác thực không thành công. Vui lòng tải lại trang để thử lại.</p>
+          </div>
+      );
+  }
 
   if (showDifficultySelector) {
     return (

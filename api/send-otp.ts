@@ -21,7 +21,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { email } = req.body;
+  const { email, turnstileToken } = req.body;
+
+  if (!turnstileToken) {
+    return res.status(400).json({ error: 'Yêu cầu xác thực người dùng.' });
+  }
+
+  // --- Verify Turnstile Token ---
+  try {
+    const turnstileResponse = await fetch('https://challenges.cloudflare.com/turnstile/v2/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: process.env.TURNSTILE_SECRET_KEY,
+        response: turnstileToken,
+      }),
+    });
+    const turnstileData: { success: boolean } = await turnstileResponse.json();
+    if (!turnstileData.success) {
+      return res.status(401).json({ error: 'Xác thực người dùng thất bại.' });
+    }
+  } catch (error) {
+    console.error('Turnstile verification error in send-otp:', error);
+    return res.status(500).json({ error: 'Lỗi server khi xác thực người dùng.' });
+  }
+  // --- End Turnstile Verification ---
 
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
     return res.status(400).json({ error: 'Địa chỉ email không hợp lệ' });
