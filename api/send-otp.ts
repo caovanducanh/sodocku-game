@@ -43,12 +43,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       formData.append('remoteip', Array.isArray(ip) ? ip[0] : ip);
     }
 
+    console.log('OTP Sending to Cloudflare:', formData.toString()); // Log the body
+
     const turnstileResponse = await fetch('https://challenges.cloudflare.com/turnstile/v2/siteverify', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData.toString(),
+      body: formData,
     });
 
     const responseText = await turnstileResponse.text();
