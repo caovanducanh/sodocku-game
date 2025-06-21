@@ -139,3 +139,23 @@ export class SudokuGenerator {
     return true;
   }
 }
+
+// Helper functions for App.tsx
+const generator = new SudokuGenerator();
+
+export const generateSudoku = (difficulty: 'easy' | 'medium' | 'hard' | 'expert' | 'master') => {
+  const solution = generator.generateComplete();
+  const puzzle = generator.createPuzzle(solution, difficulty);
+  return { puzzle, solution };
+};
+
+export const checkSolution = (grid: number[][], solution: number[][]) => {
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      if (grid[row][col] !== solution[row][col]) {
+        return false;
+      }
+    }
+  }
+  return true;
+};
