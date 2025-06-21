@@ -518,7 +518,7 @@ function App() {
           <div className="mt-2 text-yellow-300 font-bold text-lg sm:text-xl">Liên tiếp đúng: {points}</div>
           <div className="mt-1 text-green-300 font-bold text-base sm:text-lg">Điểm: {score}</div>
         </div>
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-8 xl:items-center">
           {/* Game Controls - Left Side */}
           <div className="xl:order-1 mb-2 xl:mb-0">
             {/* Bảng xếp hạng luôn ở trên cùng, cố định chiều cao */}
