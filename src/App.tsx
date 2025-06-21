@@ -640,30 +640,30 @@ function App() {
          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-sm relative animate-pop">
             <button className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-xl font-bold text-gray-700 shadow" onClick={() => setShowRules(false)}>&times;</button>
-            <div className="font-bold text-lg text-purple-700 mb-3">Luật chơi & Tính điểm</div>
-            <ul className="list-disc pl-5 space-y-1 text-sm">
-              <li>Điền đúng: <span className="text-green-600 font-semibold">+Điểm</span> = Điểm cơ bản × chuỗi đúng liên tiếp.</li>
-              <li>Điền sai: <span className="text-red-600 font-semibold">-Điểm</span> = Trừ điểm cơ bản (không âm).</li>
-              <li>Dùng Hint: <span className="text-yellow-600 font-semibold">Không cộng điểm</span>, có giới hạn.</li>
-            </ul>
-            <div className="mt-3 font-semibold text-gray-800">Điểm cơ bản theo độ khó:</div>
-            <table className="w-full text-xs mt-1 border border-gray-300 rounded overflow-hidden">
-              <thead className="bg-purple-100">
-                <tr>
-                  <th className="py-1 px-2 font-bold">Độ khó</th>
-                  <th className="py-1 px-2 font-bold">Điểm</th>
-                  <th className="py-1 px-2 font-bold">Hint</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td className="py-1 px-2">Easy</td><td className="py-1 px-2">10</td><td className="py-1 px-2">5</td></tr>
-                <tr><td className="py-1 px-2">Medium</td><td className="py-1 px-2">20</td><td className="py-1 px-2">4</td></tr>
-                <tr><td className="py-1 px-2">Hard</td><td className="py-1 px-2">30</td><td className="py-1 px-2">3</td></tr>
-                <tr><td className="py-1 px-2">Expert</td><td className="py-1 px-2">40</td><td className="py-1 px-2">2</td></tr>
-                <tr><td className="py-1 px-2">Master</td><td className="py-1 px-2">50</td><td className="py-1 px-2">1</td></tr>
-              </tbody>
-            </table>
-            <div className="mt-2 text-xs text-gray-500">* Chuỗi đúng liên tiếp càng dài, điểm càng cao!</div>
+            <div className="font-bold text-lg text-purple-700 mb-3 text-center">Quy Tắc Tính Điểm</div>
+            <div className="text-sm text-gray-800 space-y-3">
+              <div>
+                <p className="font-semibold text-green-600 mb-1">⭐ Điểm Thưởng:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Mỗi lần bạn điền đúng một số, bạn sẽ nhận được điểm.</li>
+                  <li><strong>Combo Thưởng:</strong> Điền đúng liên tiếp nhiều số sẽ giúp bạn nhận được điểm thưởng nhân lên, càng về sau điểm càng cao!</li>
+                </ul>
+              </div>
+               <div>
+                <p className="font-semibold text-red-600 mb-1">💔 Mất Điểm:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Mỗi lần điền sai, bạn sẽ bị trừ một chút điểm. Đừng lo, điểm của bạn sẽ không bao giờ bị âm.</li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-semibold text-yellow-600 mb-1">💡 Dùng Gợi Ý (Hint):</p>
+                <ul className="list-disc pl-5 space-y-1">
+                    <li>Sử dụng "Hint" sẽ không được cộng điểm cho ô đó.</li>
+                    <li>Số lượt "Hint" là có hạn tùy theo độ khó bạn chọn.</li>
+                </ul>
+              </div>
+              <p className="text-center font-semibold pt-2">Hãy chơi thật chiến lược để đạt điểm cao nhất nhé!</p>
+            </div>
           </div>
         </div>
       )}

@@ -35,14 +35,14 @@ const GameControls: React.FC<GameControlsProps> = ({
   onNewGame,
 }) => {
   return (
-    <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-4 border border-white/20 w-full max-w-xs mx-auto">
-      <div className="flex items-center justify-center mb-3">
+    <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-3 border border-white/20 w-full max-w-xs mx-auto">
+      <div className="flex items-center justify-center mb-2">
         <div className="bg-blue-100 text-blue-700 font-bold px-3 py-1.5 rounded-full flex items-center gap-2 text-sm">
           <Play size={14} /> {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+      <div className="grid grid-cols-3 gap-2 mb-2 text-center">
         <div className="bg-blue-50 rounded-xl p-2">
           <div className="text-xs text-gray-500">Time</div>
           <div className="text-base font-bold text-gray-800">{formatTime(elapsedTime)}</div>
