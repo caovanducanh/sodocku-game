@@ -41,8 +41,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const otp = generateOtp();
 
-    // Store OTP in Redis with a 10-minute expiry, keyed by email
-    await redis.set(`otp:${email}`, otp, { ex: 600 });
+    // Store OTP in Redis with a 5-minute expiry, keyed by email
+    await redis.set(`otp:${email}`, otp, { ex: 300 });
 
     // Send OTP email
     await transporter.sendMail({
@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           <p style="font-size: 24px; font-weight: bold; letter-spacing: 5px; background: #f0f0f0; padding: 10px 20px; border-radius: 8px;">
             ${otp}
           </p>
-          <p>Mã này sẽ hết hạn sau 10 phút.</p>
+          <p>Mã này sẽ hết hạn sau 5 phút.</p>
         </div>
       `,
     });

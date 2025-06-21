@@ -27,8 +27,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!storedOtp) {
       return res.status(400).json({ error: 'Mã OTP không hợp lệ hoặc đã hết hạn.' });
     }
-
-    if (storedOtp !== otp) {
+    
+    // Trim and ensure both are strings for comparison
+    if (String(storedOtp).trim() !== String(otp).trim()) {
       return res.status(400).json({ error: 'Mã OTP không chính xác.' });
     }
 
