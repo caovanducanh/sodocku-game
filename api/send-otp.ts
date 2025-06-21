@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { redis } from './redis';
 import nodemailer from 'nodemailer';
-import axios from 'axios';
 
 const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -22,42 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { email, turnstileToken } = req.body;
-
-  if (!turnstileToken) {
-    return res.status(400).json({ error: 'Yêu cầu xác thực người dùng.' });
-  }
-
-  // --- Verify Turnstile Token ---
-  try {
-    const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
-    if (!TURNSTILE_SECRET_KEY) {
-      console.error('TURNSTILE_SECRET_KEY is not set in send-otp.');
-      return res.status(500).json({ error: 'Server configuration error.' });
-    }
-
-    const params = new URLSearchParams();
-    params.append('secret', TURNSTILE_SECRET_KEY);
-    params.append('response', turnstileToken);
-    
-    const turnstileResponse = await axios.post(
-      'https://challenges.cloudflare.com/turnstile/v2/siteverify',
-      params
-    );
-
-    const turnstileData = turnstileResponse.data;
-    if (!turnstileData.success) {
-      return res.status(401).json({ error: 'Xác thực người dùng thất bại.' });
-    }
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('Axios error during OTP Turnstile verification:', error.response?.status, error.response?.data);
-    } else {
-      console.error('Generic error during OTP Turnstile verification:', error);
-    }
-    return res.status(500).json({ error: 'Lỗi server khi xác thực người dùng.' });
-  }
-  // --- End Turnstile Verification ---
+  const { email } = req.body;
 
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
     return res.status(400).json({ error: 'Địa chỉ email không hợp lệ' });
