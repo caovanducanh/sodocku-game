@@ -25,9 +25,9 @@ function App() {
   const [userRank, setUserRank] = useState<{ rank: number; score: number } | null>(null);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
-  const [showOtpForm, setShowOtpForm] = useState(false);
-  const [verifyingUsername, setVerifyingUsername] = useState('');
   const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
 
   const getBasePoint = (difficulty: Difficulty) => {
     switch (difficulty) {
@@ -359,6 +359,21 @@ function App() {
     if (token && username) setUser({ username, token });
   }, []);
 
+  // Xử lý callback từ Google OAuth
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const username = urlParams.get('username');
+    
+    if (token && username) {
+      setUser({ username, token });
+      localStorage.setItem('token', token);
+      localStorage.setItem('username', username);
+      // Clean up the URL
+      window.history.replaceState({}, document.title, "/");
+    }
+  }, []);
+
   // Lấy bảng xếp hạng khi showDifficultySelector hoặc khi đang chơi game
   useEffect(() => {
     // Chỉ fetch khi vào màn chọn độ khó hoặc khi vừa hoàn thành game
@@ -386,6 +401,14 @@ function App() {
     });
   }, [gameState?.isCompleted, user, score]);
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (otpCooldown > 0) {
+      timer = setTimeout(() => setOtpCooldown(otpCooldown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [otpCooldown]);
+
   // Đăng ký
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -395,48 +418,62 @@ function App() {
     const username = (form.elements.namedItem('username') as HTMLInputElement).value;
     const password = (form.elements.namedItem('password') as HTMLInputElement).value;
     const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+    const otp = (form.elements.namedItem('otp') as HTMLInputElement)?.value;
+
+    if (!otp) {
+      setAuthError("Vui lòng lấy và nhập mã OTP.");
+      return;
+    }
+
     try {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, email })
+        body: JSON.stringify({ username, password, email, otp })
       });
       const data = await res.json();
       if (!res.ok) {
         setAuthError(data.error || 'Đăng ký thất bại');
         return;
       }
-      setVerifyingUsername(username);
-      setShowOtpForm(true);
+      setAuthMode('login');
       setAuthMessage(data.message);
+      setOtpSent(false);
     } catch {
       setAuthError('Lỗi kết nối server');
     }
   }
 
-  async function handleVerifyOtp(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function handleSendOtp() {
+    const emailInput = document.getElementById('reg-email') as HTMLInputElement;
+    const email = emailInput?.value;
+    
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      setAuthError('Vui lòng nhập một địa chỉ email hợp lệ.');
+      return;
+    }
     setAuthError(null);
     setAuthMessage(null);
-    const form = e.currentTarget;
-    const otp = (form.elements.namedItem('otp') as HTMLInputElement).value;
+
     try {
-      const res = await fetch('/api/verify', {
+      const res = await fetch('/api/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: verifyingUsername, otp })
+        body: JSON.stringify({ email }),
       });
+
       const data = await res.json();
+
       if (!res.ok) {
-        setAuthError(data.error || 'Xác thực thất bại');
+        setAuthError(data.error || 'Không thể gửi OTP.');
         return;
       }
-      setShowOtpForm(false);
-      setVerifyingUsername('');
-      setAuthMode('login');
+
       setAuthMessage(data.message);
+      setOtpSent(true);
+      setOtpCooldown(60); // 60 seconds cooldown
     } catch {
-      setAuthError('Lỗi kết nối server');
+      setAuthError('Lỗi kết nối server.');
     }
   }
 
@@ -487,43 +524,58 @@ function App() {
       {showAuth && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-xs relative animate-pop">
-            <button className="absolute top-2 right-2 text-xl font-bold text-gray-500 hover:text-gray-700" onClick={() => { setShowAuth(false); setShowOtpForm(false); }}>&times;</button>
-            {showOtpForm ? (
-               <div>
-                 <h3 className="font-bold text-center mb-2 text-purple-700">Xác thực OTP</h3>
-                 {authMessage && <div className="text-green-600 text-xs mb-2 text-center">{authMessage}</div>}
-                 <form onSubmit={handleVerifyOtp} className="space-y-3">
-                   <p className="text-xs text-center text-gray-600">Một mã OTP đã được gửi đến email của bạn. Vui lòng nhập mã vào đây để hoàn tất đăng ký.</p>
-                   <input name="otp" required placeholder="Nhập mã OTP 6 số" className="w-full border rounded px-3 py-2 text-center" maxLength={6} />
-                   {authError && <div className="text-red-500 text-xs text-center">{authError}</div>}
-                   <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Xác thực</button>
-                   <button type="button" onClick={() => { setShowOtpForm(false); setAuthError(null); setAuthMessage(null); }} className="w-full text-center text-xs text-gray-500 hover:underline mt-1">Quay lại</button>
-                 </form>
-               </div>
+            <button className="absolute top-2 right-2 text-xl font-bold text-gray-500 hover:text-gray-700" onClick={() => { setShowAuth(false); setOtpSent(false); setAuthError(null); setAuthMessage(null); }}>&times;</button>
+            <div className="mb-4 flex gap-2 justify-center">
+              <button onClick={() => { setAuthMode('login'); setAuthError(null); setAuthMessage(null); }} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='login' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng nhập</button>
+              <button onClick={() => { setAuthMode('register'); setAuthError(null); setAuthMessage(null); setOtpSent(false); }} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='register' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng ký</button>
+            </div>
+            {authMessage && <div className="text-green-600 text-xs mb-2 text-center">{authMessage}</div>}
+            {authError && <div className="text-red-500 text-xs text-center mb-2">{authError}</div>}
+            
+            {authMode === 'login' ? (
+              <form onSubmit={handleLogin} className="space-y-3">
+                <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
+                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
+                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng nhập</button>
+              </form>
             ) : (
-               <>
-                 <div className="mb-4 flex gap-2 justify-center">
-                   <button onClick={() => { setAuthMode('login'); setAuthError(null); setAuthMessage(null); }} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='login' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng nhập</button>
-                   <button onClick={() => { setAuthMode('register'); setAuthError(null); setAuthMessage(null); }} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='register' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng ký</button>
-                 </div>
-                 {authMessage && <div className="text-green-600 text-xs mb-2 text-center">{authMessage}</div>}
-                 {authMode === 'login' ? (
-                   <form onSubmit={handleLogin} className="space-y-3">
-                     <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                     <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                     {authError && <div className="text-red-500 text-xs">{authError}</div>}
-                     <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng nhập</button>
-                   </form>
-                 ) : (
-                   <form onSubmit={handleRegister} className="space-y-3">
-                     <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                     <input name="email" type="email" required placeholder="Email" className="w-full border rounded px-3 py-2" />
-                     <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                     {authError && <div className="text-red-500 text-xs">{authError}</div>}
-                     <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng ký</button>
-                   </form>
-                 )}
-               </>
+              <form onSubmit={handleRegister} className="space-y-3">
+                <input id="reg-username" name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
+                <div className="flex items-center gap-2">
+                  <input id="reg-email" name="email" type="email" required placeholder="Email" className="w-full border rounded px-3 py-2" />
+                  <button 
+                    type="button" 
+                    onClick={handleSendOtp}
+                    disabled={otpCooldown > 0}
+                    className="text-xs text-white font-bold rounded px-2 py-1 whitespace-nowrap bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {otpCooldown > 0 ? `Gửi lại (${otpCooldown}s)` : 'Gửi mã'}
+                  </button>
+                </div>
+                 {otpSent && (
+                  <input name="otp" required placeholder="Mã OTP 6 số" className="w-full border rounded px-3 py-2" maxLength={6} />
+                )}
+                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
+                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng ký</button>
+                <div className="relative my-3">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="bg-white px-2 text-gray-500">Hoặc</span>
+                  </div>
+                </div>
+                <a 
+                  href="/api/auth/google" 
+                  className="w-full flex items-center justify-center gap-2 py-2 border border-gray-300 rounded hover:bg-gray-100 transition"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 48 48">
+                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.42-4.55H24v8.51h12.8c-.57 5.4-4.5 9.4-9.8 9.4-6.1 0-11.05-4.95-11.05-11.05s4.95-11.05 11.05-11.05c3.45 0 6.33 1.4 8.29 3.25l6.02-6.02C36.33 3.33 30.65 0 24 0 10.75 0 0 10.75 0 24s10.75 24 24 24c13.01 0 23.4-10.08 23.4-23.45 0-.5-.04-.98-.1-1.45z"></path>
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700">Đăng nhập với Google</span>
+                </a>
+              </form>
             )}
           </div>
         </div>
