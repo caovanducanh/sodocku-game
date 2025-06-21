@@ -24,7 +24,7 @@ const renderNotes = (notes: Set<number>) => {
 };
 
 const getCellClassName = (row: number, col: number, cell: SudokuCell, selectedCell: { row: number; col: number } | null, selectedNumber?: number | null) => {
-  let className = 'w-9 h-9 sm:w-12 sm:h-12 md:w-14 md:h-14 border border-gray-300 flex items-center justify-center text-base sm:text-lg md:text-xl font-bold cursor-pointer transition-all duration-200 relative select-none rounded-lg md:rounded-2xl shadow-sm md:shadow-lg';
+  let className = 'w-10 sm:w-14 md:w-16 aspect-square border border-gray-300 flex items-center justify-center text-base sm:text-lg md:text-xl font-bold cursor-pointer transition-all duration-200 relative select-none rounded-xl md:rounded-2xl shadow-md md:shadow-xl';
   if (row % 3 === 0) className += ' border-t-4 border-t-gray-800';
   if (col % 3 === 0) className += ' border-l-4 border-l-gray-800';
   if (row === 8) className += ' border-b-4 border-b-gray-800';
@@ -78,7 +78,7 @@ interface SudokuGridProps {
 const SudokuGrid: React.FC<SudokuGridProps> = memo(({ grid, selectedCell, onCellClick, selectedNumber }) => {
   return (
     <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-2 sm:p-4 md:p-6 border border-gray-200 max-w-full overflow-x-auto">
-      <div className="grid grid-cols-9 gap-[2px] border-4 border-gray-800 rounded-xl md:rounded-2xl overflow-hidden shadow-inner">
+      <div className="grid grid-cols-9 gap-1 sm:gap-1.5 md:gap-2 border-4 border-gray-800 rounded-2xl md:rounded-3xl overflow-hidden shadow-inner">
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <Cell
