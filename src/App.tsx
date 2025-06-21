@@ -24,6 +24,7 @@ function App() {
   const [leaderboard, setLeaderboard] = useState<{ username: string; score: number }[]>([]);
   const [userRank, setUserRank] = useState<{ rank: number; score: number } | null>(null);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
 
   const getBasePoint = (difficulty: Difficulty) => {
     switch (difficulty) {
@@ -589,34 +590,66 @@ function App() {
           onPlayAgain={handleRestart}
         />
       )}
-      {/* Nút và popup luật chơi */}
-      <div className="fixed bottom-2 right-2 z-50">
-        {!showRules ? (
-          <button
-            className="bg-purple-600 text-white font-bold rounded-full shadow-lg px-4 py-2 text-sm hover:bg-purple-700 transition-all"
-            onClick={() => setShowRules(true)}
-          >
-            Luật chơi
-          </button>
-        ) : (
-          <div className="max-w-xs w-[90vw] sm:w-80 bg-white/95 rounded-2xl shadow-2xl border border-gray-200 p-4 text-sm text-gray-700 select-none backdrop-blur-md relative animate-pop">
-            <button
-              className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-xl font-bold text-gray-700 shadow"
-              onClick={() => setShowRules(false)}
-              title="Thu nhỏ"
-            >
-              –
-            </button>
-            <div className="font-bold text-base text-purple-700 mb-2">Luật chơi & Tính điểm</div>
-            <ul className="list-disc pl-5 space-y-1">
+      {/* Nút và popup luật chơi & Hướng dẫn */}
+      <div className="fixed bottom-2 right-2 z-50 flex flex-col items-end gap-2">
+        <button
+          className="bg-sky-600 text-white font-bold rounded-full shadow-lg px-4 py-2 text-sm hover:bg-sky-700 transition-all"
+          onClick={() => setShowHowToPlay(true)}
+        >
+          Hướng dẫn chơi
+        </button>
+        <button
+          className="bg-purple-600 text-white font-bold rounded-full shadow-lg px-4 py-2 text-sm hover:bg-purple-700 transition-all"
+          onClick={() => setShowRules(true)}
+        >
+          Luật chơi
+        </button>
+      </div>
+
+      {/* Popup Hướng dẫn chơi */}
+      {showHowToPlay && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-md relative animate-pop">
+            <button className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-xl font-bold text-gray-700 shadow" onClick={() => setShowHowToPlay(false)}>&times;</button>
+            <div className="font-bold text-lg text-purple-700 mb-3 text-center">Hướng Dẫn Cho Người Mới Bắt Đầu</div>
+            <div className="text-sm text-gray-800 space-y-3">
+              <p>Chào mừng bạn đến với Sudoku! Đây là một trò chơi giải đố logic rất thú vị. Mục tiêu của bạn rất đơn giản: <strong>lấp đầy tất cả các ô trống bằng các số từ 1 đến 9.</strong></p>
+              <div>
+                <p className="font-bold mb-1">Chỉ cần nhớ 3 quy tắc VÀNG:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Số bạn điền không được trùng với bất kỳ số nào trên cùng <strong>HÀNG NGANG</strong>.</li>
+                  <li>Số bạn điền không được trùng với bất kỳ số nào trên cùng <strong>CỘT DỌC</strong>.</li>
+                  <li>Số bạn điền không được trùng với bất kỳ số nào trong cùng <strong>Ô VUÔNG LỚN (3x3)</strong>.</li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-bold mb-1">Mẹo chơi cực dễ:</p>
+                 <ul className="list-disc pl-5 space-y-1">
+                  <li><strong>Bắt đầu từ nơi dễ nhất:</strong> Tìm những hàng, cột, hoặc ô vuông lớn đã có nhiều số nhất. Việc tìm ra số còn thiếu sẽ dễ dàng hơn rất nhiều!</li>
+                  <li><strong>Dùng Ghi Chú (Notes):</strong> Nếu chưa chắc chắn về một ô, hãy bật chế độ "Notes" và điền những con số bạn đang phân vân vào đó. Đây là cách các cao thủ sử dụng để loại trừ và tìm ra đáp án đúng.</li>
+                </ul>
+              </div>
+              <p className="text-center font-semibold pt-2">Chúc bạn có những giờ phút giải đố vui vẻ!</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Luật chơi */}
+      {showRules && (
+         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-sm relative animate-pop">
+            <button className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-xl font-bold text-gray-700 shadow" onClick={() => setShowRules(false)}>&times;</button>
+            <div className="font-bold text-lg text-purple-700 mb-3">Luật chơi & Tính điểm</div>
+            <ul className="list-disc pl-5 space-y-1 text-sm">
               <li>Điền đúng: <span className="text-green-600 font-semibold">+Điểm</span> = Điểm cơ bản × chuỗi đúng liên tiếp.</li>
-              <li>Điền sai: <span className="text-red-600 font-semibold">-Điểm</span> = Trừ điểm cơ bản (không để &lt; 0).</li>
-              <li>Dùng Hint: <span className="text-yellow-600 font-semibold">Không cộng điểm</span>, số lần hint giới hạn theo độ khó.</li>
+              <li>Điền sai: <span className="text-red-600 font-semibold">-Điểm</span> = Trừ điểm cơ bản (không âm).</li>
+              <li>Dùng Hint: <span className="text-yellow-600 font-semibold">Không cộng điểm</span>, có giới hạn.</li>
             </ul>
-            <div className="mt-2 font-semibold text-gray-800">Điểm cơ bản theo độ khó:</div>
+            <div className="mt-3 font-semibold text-gray-800">Điểm cơ bản theo độ khó:</div>
             <table className="w-full text-xs mt-1 border border-gray-300 rounded overflow-hidden">
-              <thead>
-                <tr className="bg-purple-100">
+              <thead className="bg-purple-100">
+                <tr>
                   <th className="py-1 px-2 font-bold">Độ khó</th>
                   <th className="py-1 px-2 font-bold">Điểm</th>
                   <th className="py-1 px-2 font-bold">Hint</th>
@@ -632,8 +665,8 @@ function App() {
             </table>
             <div className="mt-2 text-xs text-gray-500">* Chuỗi đúng liên tiếp càng dài, điểm càng cao!</div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
