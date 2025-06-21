@@ -24,11 +24,7 @@ const renderNotes = (notes: Set<number>) => {
 };
 
 const getCellClassName = (row: number, col: number, cell: SudokuCell, selectedCell: { row: number; col: number } | null, selectedNumber?: number | null) => {
-  let className = 'w-10 sm:w-14 md:w-16 aspect-square border border-gray-300 flex items-center justify-center text-base sm:text-lg md:text-xl font-bold cursor-pointer transition-all duration-200 relative select-none rounded-xl md:rounded-2xl shadow-md md:shadow-xl';
-  if (row % 3 === 0) className += ' border-t-4 border-t-gray-800';
-  if (col % 3 === 0) className += ' border-l-4 border-l-gray-800';
-  if (row === 8) className += ' border-b-4 border-b-gray-800';
-  if (col === 8) className += ' border-r-4 border-r-gray-800';
+  let className = 'w-10 sm:w-14 md:w-16 aspect-square border border-white/80 flex items-center justify-center text-base sm:text-lg md:text-xl font-bold cursor-pointer transition-all duration-200 relative select-none rounded-md shadow-sm';
 
   if (cell.isError) {
     className += ' bg-gradient-to-br from-red-100 to-red-200 text-red-700 border-red-300';
@@ -77,8 +73,8 @@ interface SudokuGridProps {
 
 const SudokuGrid: React.FC<SudokuGridProps> = memo(({ grid, selectedCell, onCellClick, selectedNumber }) => {
   return (
-    <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-2 sm:p-4 md:p-6 border border-gray-200 max-w-full overflow-x-auto">
-      <div className="grid grid-cols-9 gap-1 sm:gap-1.5 md:gap-2 border-4 border-gray-800 rounded-2xl md:rounded-3xl overflow-hidden shadow-inner">
+    <div className="bg-gradient-to-br from-slate-900 to-purple-900 rounded-2xl md:rounded-3xl shadow-2xl p-2 sm:p-4 md:p-6 border border-gray-900/30 max-w-full overflow-x-auto">
+      <div className="grid grid-cols-9 gap-2 sm:gap-2.5 md:gap-3 rounded-2xl md:rounded-3xl overflow-visible">
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <Cell
