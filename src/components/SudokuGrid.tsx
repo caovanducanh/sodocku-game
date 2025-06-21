@@ -24,37 +24,23 @@ const renderNotes = (notes: Set<number>) => {
 };
 
 const getCellClassName = (row: number, col: number, cell: SudokuCell, selectedCell: { row: number; col: number } | null, selectedNumber?: number | null) => {
-  let className = 'w-9 h-9 sm:w-12 sm:h-12 md:w-14 md:h-14 flex items-center justify-center text-base sm:text-lg md:text-xl font-bold cursor-pointer transition-colors duration-150 relative select-none';
+  let className = 'w-9 h-9 sm:w-12 sm:h-12 md:w-14 md:h-14 border border-gray-300 flex items-center justify-center text-base sm:text-lg md:text-xl font-bold cursor-pointer transition-all duration-200 relative select-none rounded-lg md:rounded-2xl shadow-sm md:shadow-lg';
+  if (row % 3 === 0) className += ' border-t-4 border-t-gray-800';
+  if (col % 3 === 0) className += ' border-l-4 border-l-gray-800';
+  if (row === 8) className += ' border-b-4 border-b-gray-800';
+  if (col === 8) className += ' border-r-4 border-r-gray-800';
 
-  // --- Background Color & Effects ---
   if (cell.isError) {
-    className += ' bg-red-300 text-white';
+    className += ' bg-gradient-to-br from-red-100 to-red-200 text-red-700 border-red-300';
   } else if (selectedCell?.row === row && selectedCell?.col === col) {
-    className += ' bg-blue-400 rounded-sm'; // Selected cell is blue
-  } else if ((selectedNumber && cell.value === selectedNumber && cell.value !== 0) || cell.isHighlighted) {
-    className += ' bg-yellow-200'; // Highlighted cells are yellow
+    className += ' bg-gradient-to-br from-blue-400 to-blue-500 text-white shadow-xl scale-105 z-10 border-blue-600';
+  } else if ((selectedNumber && cell.value === selectedNumber) || cell.isHighlighted) {
+    className += ' bg-gradient-to-br from-yellow-100 to-yellow-200 border-yellow-400 shadow-md';
+  } else if (cell.isGiven) {
+    className += ' bg-gradient-to-br from-gray-100 to-gray-200 text-gray-800 font-extrabold';
   } else {
-    className += ' bg-white hover:bg-slate-100';
-    // Subtle inset shadow for 3D effect on default cells
-    className += ' shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)]';
+    className += ' bg-white text-blue-600 hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 hover:border-blue-200';
   }
-
-  // --- Font Style ---
-  if (cell.isGiven) {
-    className += ' text-slate-700';
-  } else if (!cell.isError) {
-    className += ' text-blue-600';
-  }
-  
-  // --- Border Logic ---
-  // Thin borders separating cells
-  className += ' border-b border-r border-slate-200';
-  // Thick borders for 3x3 boxes
-  if (row % 3 === 0) className += ' border-t-2 border-slate-700';
-  if (col % 3 === 0) className += ' border-l-2 border-slate-700';
-  if (row === 8) className += ' border-b-2 border-slate-700';
-  if (col === 8) className += ' border-r-2 border-slate-700';
-  
   return className;
 };
 
@@ -91,8 +77,8 @@ interface SudokuGridProps {
 
 const SudokuGrid: React.FC<SudokuGridProps> = memo(({ grid, selectedCell, onCellClick, selectedNumber }) => {
   return (
-    <div className="bg-slate-700 rounded-lg shadow-2xl p-1 sm:p-2 border border-purple-300/20">
-      <div className="grid grid-cols-9">
+    <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-2 sm:p-4 md:p-6 border border-gray-200 max-w-full overflow-x-auto">
+      <div className="grid grid-cols-9 gap-[2px] border-4 border-gray-800 rounded-xl md:rounded-2xl overflow-hidden shadow-inner">
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <Cell
