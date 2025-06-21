@@ -518,10 +518,9 @@ function App() {
           <div className="mt-2 text-yellow-300 font-bold text-lg sm:text-xl">Liên tiếp đúng: {points}</div>
           <div className="mt-1 text-green-300 font-bold text-base sm:text-lg">Điểm: {score}</div>
         </div>
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-8 xl:items-center">
-          {/* Game Controls - Left Side */}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-8 xl:items-start">
+          {/* Leaderboard - Left Side */}
           <div className="xl:order-1 mb-2 xl:mb-0">
-            {/* Bảng xếp hạng luôn ở trên cùng, cố định chiều cao */}
             <div className="mb-6">
               {loadingLeaderboard ? (
                 <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
@@ -529,19 +528,6 @@ function App() {
                 <Leaderboard leaderboard={leaderboard} userRank={userRank} />
               )}
             </div>
-            <GameControls
-              elapsedTime={gameState.elapsedTime}
-              mistakes={gameState.mistakes}
-              hintsUsed={gameState.hintsUsed}
-              maxHints={maxHints}
-              isPaused={gameState.isPaused}
-              isCompleted={gameState.isCompleted}
-              difficulty={gameState.difficulty}
-              onPauseToggle={handlePauseToggle}
-              onRestart={handleRestart}
-              onHint={handleHint}
-              onNewGame={handleNewGame}
-            />
           </div>
           {/* Sudoku Grid - Center */}
           <div className="xl:col-span-2 xl:order-2 mb-2 xl:mb-0 flex items-center justify-center">
@@ -565,17 +551,32 @@ function App() {
               />
             )}
           </div>
-          {/* Number Pad - Right Side */}
+          {/* Controls - Right Side */}
           <div className="xl:order-3">
+            <GameControls
+              elapsedTime={gameState.elapsedTime}
+              mistakes={gameState.mistakes}
+              hintsUsed={gameState.hintsUsed}
+              maxHints={maxHints}
+              isPaused={gameState.isPaused}
+              isCompleted={gameState.isCompleted}
+              difficulty={gameState.difficulty}
+              onPauseToggle={handlePauseToggle}
+              onRestart={handleRestart}
+              onHint={handleHint}
+              onNewGame={handleNewGame}
+            />
             {!gameState.isPaused && (
-              <NumberPad
-                onNumberClick={handleNumberClick}
-                onEraseClick={handleErase}
-                onNotesToggle={handleNotesToggle}
-                isNotesMode={gameState.isNotesMode}
-                selectedCell={gameState.selectedCell}
-                onPadNumberSelect={handlePadNumberSelect}
-              />
+              <div className="mt-6">
+                <NumberPad
+                  onNumberClick={handleNumberClick}
+                  onEraseClick={handleErase}
+                  onNotesToggle={handleNotesToggle}
+                  isNotesMode={gameState.isNotesMode}
+                  selectedCell={gameState.selectedCell}
+                  onPadNumberSelect={handlePadNumberSelect}
+                />
+              </div>
             )}
           </div>
         </div>
