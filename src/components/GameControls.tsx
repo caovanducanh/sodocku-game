@@ -1,19 +1,26 @@
 import React from 'react';
-import { Play, Pause, RotateCcw, Lightbulb, Settings, Clock, Target, Zap } from 'lucide-react';
+import { Play, Pause, Lightbulb, RotateCcw, Settings2 } from 'lucide-react';
+import { Difficulty } from '../types/sudoku';
 
 interface GameControlsProps {
   elapsedTime: number;
   mistakes: number;
   hintsUsed: number;
-  maxHints?: number;
+  maxHints: number;
   isPaused: boolean;
   isCompleted: boolean;
-  difficulty: string;
+  difficulty: Difficulty;
   onPauseToggle: () => void;
   onRestart: () => void;
   onHint: () => void;
   onNewGame: () => void;
 }
+
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
 
 const GameControls: React.FC<GameControlsProps> = ({
   elapsedTime,
@@ -21,113 +28,60 @@ const GameControls: React.FC<GameControlsProps> = ({
   hintsUsed,
   maxHints,
   isPaused,
-  isCompleted,
   difficulty,
   onPauseToggle,
   onRestart,
   onHint,
   onNewGame,
 }) => {
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getDifficultyColor = (diff: string) => {
-    switch (diff) {
-      case 'easy': return 'from-green-500 to-emerald-600';
-      case 'medium': return 'from-blue-500 to-cyan-600';
-      case 'hard': return 'from-orange-500 to-red-500';
-      case 'expert': return 'from-red-500 to-pink-600';
-      case 'master': return 'from-purple-500 to-indigo-600';
-      default: return 'from-blue-500 to-cyan-600';
-    }
-  };
-
   return (
-    <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-2 sm:p-4 md:p-6 border border-gray-200 max-w-full">
-      {/* Difficulty Badge */}
-      <div className="text-center mb-4 sm:mb-6">
-        <div className={`inline-flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-2 rounded-full text-white font-bold text-xs sm:text-sm bg-gradient-to-r ${getDifficultyColor(difficulty)} shadow-lg`}>
-          <Zap size={16} />
-          {difficulty.toUpperCase()} LEVEL
+    <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-4 border border-white/20 w-full max-w-xs mx-auto">
+      <div className="flex items-center justify-center mb-3">
+        <div className="bg-blue-100 text-blue-700 font-bold px-3 py-1.5 rounded-full flex items-center gap-2 text-sm">
+          <Play size={14} /> {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-2 sm:gap-4 mb-4 sm:mb-6">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl sm:rounded-2xl p-2 sm:p-4 text-center border border-blue-200">
-          <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mx-auto mb-1 sm:mb-2" />
-          <div className="text-lg sm:text-2xl font-mono font-bold text-blue-800">
-            {formatTime(elapsedTime)}
-          </div>
-          <div className="text-xs sm:text-sm text-blue-600 font-medium">Time</div>
+      <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+        <div className="bg-blue-50 rounded-xl p-2">
+          <div className="text-xs text-gray-500">Time</div>
+          <div className="text-base font-bold text-gray-800">{formatTime(elapsedTime)}</div>
         </div>
-        
-        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl sm:rounded-2xl p-2 sm:p-4 text-center border border-red-200">
-          <Target className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 mx-auto mb-1 sm:mb-2" />
-          <div className="text-lg sm:text-2xl font-bold text-red-800">
-            {mistakes}
-          </div>
-          <div className="text-xs sm:text-sm text-red-600 font-medium">Mistakes</div>
+        <div className="bg-red-50 rounded-xl p-2">
+          <div className="text-xs text-gray-500">Mistakes</div>
+          <div className="text-base font-bold text-red-500">{mistakes}</div>
         </div>
-        
-        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl sm:rounded-2xl p-2 sm:p-4 text-center border border-yellow-200">
-          <Lightbulb className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600 mx-auto mb-1 sm:mb-2" />
-          <div className="text-lg sm:text-2xl font-bold text-yellow-800">
-            {maxHints !== undefined ? `${maxHints - hintsUsed}` : '-'}
-          </div>
-          <div className="text-xs sm:text-sm text-yellow-600 font-medium">Hints Left</div>
+        <div className="bg-yellow-50 rounded-xl p-2">
+          <div className="text-xs text-gray-500">Hints</div>
+          <div className="text-base font-bold text-yellow-600">{maxHints - hintsUsed}</div>
         </div>
       </div>
       
-      {/* Control Buttons */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <button
           onClick={onPauseToggle}
-          disabled={isCompleted}
-          className={`flex items-center justify-center gap-2 h-9 sm:h-12 rounded-xl sm:rounded-2xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg select-none ${
-            isCompleted
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : isPaused
-                ? 'bg-gradient-to-br from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 hover:shadow-xl'
-                : 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white hover:from-yellow-600 hover:to-yellow-700 hover:shadow-xl'
-          }`}
+          className="bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
         >
-          {isPaused ? <Play size={20} /> : <Pause size={20} />}
-          {isPaused ? 'Resume' : 'Pause'}
+          <Pause size={16} /> {isPaused ? 'Resume' : 'Pause'}
         </button>
-        
         <button
           onClick={onHint}
-          disabled={isCompleted || (maxHints !== undefined && hintsUsed >= maxHints)}
-          className={`flex items-center justify-center gap-2 h-9 sm:h-12 rounded-xl sm:rounded-2xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg select-none ${
-            isCompleted
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : (maxHints !== undefined && hintsUsed >= maxHints)
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700 hover:shadow-xl'
-          }`}
+          disabled={hintsUsed >= maxHints}
+          className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:bg-gray-400 text-sm"
         >
-          <Lightbulb size={20} />
-          Hint
+          <Lightbulb size={16} /> Hint
         </button>
-        
         <button
           onClick={onRestart}
-          className="flex items-center justify-center gap-2 h-9 sm:h-12 rounded-xl sm:rounded-2xl font-semibold bg-gradient-to-br from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg hover:shadow-xl select-none"
+          className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
         >
-          <RotateCcw size={20} />
-          Restart
+          <RotateCcw size={16} /> Restart
         </button>
-        
         <button
           onClick={onNewGame}
-          className="flex items-center justify-center gap-2 h-9 sm:h-12 rounded-xl sm:rounded-2xl font-semibold bg-gradient-to-br from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg hover:shadow-xl select-none"
+          className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
         >
-          <Settings size={20} />
-          New Game
+          <Settings2 size={16} /> New Game
         </button>
       </div>
     </div>
