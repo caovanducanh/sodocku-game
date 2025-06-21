@@ -126,19 +126,20 @@ function App() {
   const handleCellClick = useCallback((row: number, col: number) => {
     if (!gameState || gameState.isCompleted || gameState.isPaused) return;
 
+    setSelectedNumber(null); // ALWAYS clear number selection from pad
+
     const clickedValue = gameState.grid[row][col].value;
     let newGrid;
     if (clickedValue !== 0) {
-      // Highlight tất cả cell có value === clickedValue
+      // Highlight all cells with the same value
       newGrid = gameState.grid.map(rowArr =>
         rowArr.map(cell => ({
           ...cell,
           isHighlighted: cell.value === clickedValue
         }))
       );
-      setSelectedNumber(null); // reset selectedNumber khi click vào cell
     } else {
-      // Nếu là ô trống thì dùng highlight mặc định
+      // Highlight row/col/box for empty cells
       newGrid = updateHighlighting(gameState.grid, row, col);
     }
 
@@ -327,22 +328,32 @@ function App() {
     setShowDifficultySelector(false);
   }, [initializeGame]);
 
-  // Hàm mới: highlight các số giống nhau khi click NumberPad
+  // Handle number pad click for highlighting
   const handlePadNumberSelect = useCallback((number: number) => {
-    setSelectedNumber(number);
     if (!gameState) return;
-    // Highlight tất cả cell có value === number
+
+    // Toggle off if same number is clicked
+    if (selectedNumber === number) {
+      setSelectedNumber(null);
+      const gridWithoutHighlight = gameState.grid.map(r => r.map(c => ({...c, isHighlighted: false})));
+      setGameState(prev => prev ? {...prev, grid: gridWithoutHighlight} : null);
+      return;
+    }
+
+    setSelectedNumber(number);
     const newGrid = gameState.grid.map(row =>
       row.map(cell => ({
         ...cell,
         isHighlighted: cell.value === number && number !== 0
       }))
     );
+    // Clear selected cell when highlighting from number pad
     setGameState(prev => prev ? {
       ...prev,
-      grid: newGrid
+      grid: newGrid,
+      selectedCell: null
     } : null);
-  }, [gameState]);
+  }, [gameState, selectedNumber]);
 
   // Đọc token từ localStorage khi load app
   useEffect(() => {
@@ -521,8 +532,8 @@ function App() {
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-6 xl:items-start">
           {/* Left Side: Leaderboard and Game Controls */}
-          <div className="xl:order-1 mb-2 xl:mb-0">
-            <div className="mb-4">
+          <div className="xl:order-1 mb-2 xl:mb-0 h-full flex flex-col justify-center gap-6">
+            <div>
               {loadingLeaderboard ? (
                 <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
               ) : (
