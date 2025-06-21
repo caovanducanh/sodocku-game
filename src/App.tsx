@@ -25,6 +25,9 @@ function App() {
   const [userRank, setUserRank] = useState<{ rank: number; score: number } | null>(null);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [showOtpForm, setShowOtpForm] = useState(false);
+  const [verifyingUsername, setVerifyingUsername] = useState('');
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
 
   const getBasePoint = (difficulty: Difficulty) => {
     switch (difficulty) {
@@ -387,22 +390,51 @@ function App() {
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setAuthError(null);
+    setAuthMessage(null);
     const form = e.currentTarget;
     const username = (form.elements.namedItem('username') as HTMLInputElement).value;
     const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+    const email = (form.elements.namedItem('email') as HTMLInputElement).value;
     try {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password, email })
       });
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         setAuthError(data.error || 'Đăng ký thất bại');
         return;
       }
+      setVerifyingUsername(username);
+      setShowOtpForm(true);
+      setAuthMessage(data.message);
+    } catch {
+      setAuthError('Lỗi kết nối server');
+    }
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setAuthError(null);
+    setAuthMessage(null);
+    const form = e.currentTarget;
+    const otp = (form.elements.namedItem('otp') as HTMLInputElement).value;
+    try {
+      const res = await fetch('/api/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: verifyingUsername, otp })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || 'Xác thực thất bại');
+        return;
+      }
+      setShowOtpForm(false);
+      setVerifyingUsername('');
       setAuthMode('login');
-      setAuthError('Đăng ký thành công! Đăng nhập để tiếp tục.');
+      setAuthMessage(data.message);
     } catch {
       setAuthError('Lỗi kết nối server');
     }
@@ -455,25 +487,43 @@ function App() {
       {showAuth && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-xs relative animate-pop">
-            <button className="absolute top-2 right-2 text-xl font-bold text-gray-500 hover:text-gray-700" onClick={() => setShowAuth(false)}>&times;</button>
-            <div className="mb-4 flex gap-2 justify-center">
-              <button onClick={() => setAuthMode('login')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='login' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng nhập</button>
-              <button onClick={() => setAuthMode('register')} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='register' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng ký</button>
-            </div>
-            {authMode === 'login' ? (
-              <form onSubmit={handleLogin} className="space-y-3">
-                <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                {authError && <div className="text-red-500 text-xs">{authError}</div>}
-                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng nhập</button>
-              </form>
+            <button className="absolute top-2 right-2 text-xl font-bold text-gray-500 hover:text-gray-700" onClick={() => { setShowAuth(false); setShowOtpForm(false); }}>&times;</button>
+            {showOtpForm ? (
+               <div>
+                 <h3 className="font-bold text-center mb-2 text-purple-700">Xác thực OTP</h3>
+                 {authMessage && <div className="text-green-600 text-xs mb-2 text-center">{authMessage}</div>}
+                 <form onSubmit={handleVerifyOtp} className="space-y-3">
+                   <p className="text-xs text-center text-gray-600">Một mã OTP đã được gửi đến email của bạn. Vui lòng nhập mã vào đây để hoàn tất đăng ký.</p>
+                   <input name="otp" required placeholder="Nhập mã OTP 6 số" className="w-full border rounded px-3 py-2 text-center" maxLength={6} />
+                   {authError && <div className="text-red-500 text-xs text-center">{authError}</div>}
+                   <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Xác thực</button>
+                   <button type="button" onClick={() => { setShowOtpForm(false); setAuthError(null); setAuthMessage(null); }} className="w-full text-center text-xs text-gray-500 hover:underline mt-1">Quay lại</button>
+                 </form>
+               </div>
             ) : (
-              <form onSubmit={handleRegister} className="space-y-3">
-                <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                {authError && <div className="text-red-500 text-xs">{authError}</div>}
-                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng ký</button>
-              </form>
+               <>
+                 <div className="mb-4 flex gap-2 justify-center">
+                   <button onClick={() => { setAuthMode('login'); setAuthError(null); setAuthMessage(null); }} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='login' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng nhập</button>
+                   <button onClick={() => { setAuthMode('register'); setAuthError(null); setAuthMessage(null); }} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='register' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng ký</button>
+                 </div>
+                 {authMessage && <div className="text-green-600 text-xs mb-2 text-center">{authMessage}</div>}
+                 {authMode === 'login' ? (
+                   <form onSubmit={handleLogin} className="space-y-3">
+                     <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
+                     <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
+                     {authError && <div className="text-red-500 text-xs">{authError}</div>}
+                     <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng nhập</button>
+                   </form>
+                 ) : (
+                   <form onSubmit={handleRegister} className="space-y-3">
+                     <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
+                     <input name="email" type="email" required placeholder="Email" className="w-full border rounded px-3 py-2" />
+                     <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
+                     {authError && <div className="text-red-500 text-xs">{authError}</div>}
+                     <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng ký</button>
+                   </form>
+                 )}
+               </>
             )}
           </div>
         </div>
