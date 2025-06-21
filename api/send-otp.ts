@@ -29,9 +29,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // --- Verify Turnstile Token ---
   try {
+    const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
+    if (!TURNSTILE_SECRET_KEY) {
+      console.error('TURNSTILE_SECRET_KEY is not set in send-otp.');
+      return res.status(500).json({ error: 'Server configuration error.' });
+    }
+
     const ip = req.headers['x-forwarded-for'];
     const formData = new URLSearchParams();
-    formData.append('secret', process.env.TURNSTILE_SECRET_KEY!);
+    formData.append('secret', TURNSTILE_SECRET_KEY);
     formData.append('response', turnstileToken);
     if (ip) {
       formData.append('remoteip', Array.isArray(ip) ? ip[0] : ip);
@@ -39,7 +45,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const turnstileResponse = await fetch('https://challenges.cloudflare.com/turnstile/v2/siteverify', {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
     });
 
     const turnstileData: { success: boolean } = await turnstileResponse.json();

@@ -7,6 +7,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  if (!TURNSTILE_SECRET_KEY) {
+    console.error('TURNSTILE_SECRET_KEY is not set.');
+    return res.status(500).json({ error: 'Server configuration error.' });
+  }
+
   const { token } = req.body;
 
   if (!token) {
@@ -17,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const ip = req.headers['x-forwarded-for'];
     
     const formData = new URLSearchParams();
-    formData.append('secret', TURNSTILE_SECRET_KEY!);
+    formData.append('secret', TURNSTILE_SECRET_KEY);
     formData.append('response', token);
     if (ip) {
       formData.append('remoteip', Array.isArray(ip) ? ip[0] : ip);
@@ -25,7 +30,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const response = await fetch('https://challenges.cloudflare.com/turnstile/v2/siteverify', {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
     });
 
     const data: { success: boolean; 'error-codes'?: string[] } = await response.json();
