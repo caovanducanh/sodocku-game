@@ -40,7 +40,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ leaderboard, userRank }) => {
             <tr key={entry.username + entry.score} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
               <td className="py-1 px-2 text-sm font-bold text-purple-600">{idx + 1}</td>
               <td className="py-1 px-2 text-sm">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
                   <span>{entry.username}</span>
                   {getCrown(idx + 1)}
                 </div>

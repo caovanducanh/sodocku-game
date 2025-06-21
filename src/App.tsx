@@ -527,7 +527,7 @@ function App() {
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-6 xl:items-start">
           {/* Left Side: Leaderboard and Game Controls */}
           <div className="xl:order-1 mb-2 xl:mb-0 h-full flex flex-col justify-between">
-            <div>
+            <div className="flex-grow">
               {loadingLeaderboard ? (
                 <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
               ) : (
