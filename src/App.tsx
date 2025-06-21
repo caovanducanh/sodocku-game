@@ -191,14 +191,28 @@ function App() {
   useEffect(() => {
     if (!gameState || gameState.isCompleted || gameState.isPaused) return;
 
-    const timer = setInterval(() => {
-      setGameState(prev => prev ? {
-        ...prev,
-        elapsedTime: Math.floor((Date.now() - prev.startTime) / 1000)
-      } : null);
-    }, 1000);
+    let animationFrameId: number;
 
-    return () => clearInterval(timer);
+    const updateTimer = () => {
+        setGameState(prev => {
+            if (!prev || prev.isPaused || prev.isCompleted) return prev;
+            // Ensure startTime is valid
+            if (typeof prev.startTime !== 'number' || prev.startTime <= 0) return prev;
+
+            const newElapsedTime = Math.floor((Date.now() - prev.startTime) / 1000);
+
+            // Only update state if the second has changed to avoid unnecessary re-renders
+            if (newElapsedTime > prev.elapsedTime) {
+                return { ...prev, elapsedTime: newElapsedTime };
+            }
+            return prev;
+        });
+        animationFrameId = requestAnimationFrame(updateTimer);
+    };
+
+    animationFrameId = requestAnimationFrame(updateTimer);
+
+    return () => cancelAnimationFrame(animationFrameId);
   }, [gameState?.isCompleted, gameState?.isPaused, gameState?.startTime]);
 
   // Check if puzzle is completed
@@ -484,17 +498,47 @@ function App() {
   useEffect(() => {
     // Chỉ fetch khi vào màn chọn độ khó hoặc khi vừa hoàn thành game
     if (!showDifficultySelector && !(gameState && gameState.isCompleted)) return;
-    setLoadingLeaderboard(true);
-    const token = localStorage.getItem('token');
-    fetch('/api/leaderboard', {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then(res => res.json())
-      .then(data => {
-        setLeaderboard(data.leaderboard || []);
-        setUserRank(data.user || null);
+
+    const CACHE_DURATION_MIN = 5;
+    const cacheKey = 'sudoku-leaderboard-cache';
+
+    const fetchLeaderboard = () => {
+      setLoadingLeaderboard(true);
+      const token = localStorage.getItem('token');
+      fetch('/api/leaderboard', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
-      .finally(() => setLoadingLeaderboard(false));
+        .then(res => res.json())
+        .then(data => {
+          const cacheData = {
+            leaderboard: data.leaderboard || [],
+            userRank: data.user || null,
+            timestamp: Date.now(),
+          };
+          sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+          setLeaderboard(cacheData.leaderboard);
+          setUserRank(cacheData.userRank);
+        })
+        .finally(() => setLoadingLeaderboard(false));
+    };
+
+    try {
+      const cachedItem = sessionStorage.getItem(cacheKey);
+      if (cachedItem) {
+        const { leaderboard, userRank, timestamp } = JSON.parse(cachedItem);
+        const ageMinutes = (Date.now() - timestamp) / (1000 * 60);
+
+        if (ageMinutes < CACHE_DURATION_MIN) {
+          setLeaderboard(leaderboard);
+          setUserRank(userRank);
+          return; 
+        }
+      }
+    } catch (e) {
+      console.error("Error reading leaderboard cache", e);
+    }
+    
+    fetchLeaderboard();
   }, [showDifficultySelector, user, gameState?.isCompleted]);
 
   // Gửi điểm lên server khi hoàn thành game
