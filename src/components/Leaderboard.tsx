@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Crown } from 'lucide-react';
 
 interface LeaderboardEntry {
@@ -11,7 +11,7 @@ interface LeaderboardProps {
   userRank?: { rank: number; score: number } | null;
 }
 
-const Leaderboard: React.FC<LeaderboardProps> = ({ leaderboard, userRank }) => {
+const Leaderboard: React.FC<LeaderboardProps> = memo(({ leaderboard, userRank }) => {
   const getCrown = (rank: number) => {
     if (rank === 1) return <Crown size={16} className="text-yellow-400 fill-yellow-400" />;
     if (rank === 2) return <Crown size={16} className="text-gray-400 fill-gray-400" />;
@@ -54,6 +54,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ leaderboard, userRank }) => {
       </table>
     </div>
   );
-};
+});
 
 export default Leaderboard; 

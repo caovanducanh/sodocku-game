@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Edit3, Eraser } from 'lucide-react';
 
 interface NumberPadProps {
@@ -10,7 +10,7 @@ interface NumberPadProps {
   onPadNumberSelect?: (number: number) => void;
 }
 
-const NumberPad: React.FC<NumberPadProps> = ({
+const NumberPad: React.FC<NumberPadProps> = memo(({
   onNumberClick,
   onEraseClick,
   onNotesToggle,
@@ -91,6 +91,6 @@ const NumberPad: React.FC<NumberPadProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default NumberPad;

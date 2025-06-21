@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Play, Pause, Lightbulb, RotateCcw, Settings2 } from 'lucide-react';
 import { Difficulty } from '../types/sudoku';
 
@@ -22,7 +22,7 @@ const formatTime = (seconds: number) => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-const GameControls: React.FC<GameControlsProps> = ({
+const GameControls: React.FC<GameControlsProps> = memo(({
   elapsedTime,
   mistakes,
   hintsUsed,
@@ -86,6 +86,6 @@ const GameControls: React.FC<GameControlsProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default GameControls;

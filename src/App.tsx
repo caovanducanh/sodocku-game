@@ -1,12 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { SudokuGenerator } from './utils/sudokuGenerator';
 import { GameState, SudokuCell, Difficulty } from './types/sudoku';
-import SudokuGrid from './components/SudokuGrid';
-import NumberPad from './components/NumberPad';
-import GameControls from './components/GameControls';
 import DifficultySelector from './components/DifficultySelector';
-import WinDialog from './components/WinDialog';
 import Leaderboard from './components/Leaderboard';
+import { Auth } from './components/Auth';
+import { HowToPlayPopup, RulesPopup } from './components/Popups';
+
+const GameUI = lazy(() => import('./components/GameUI'));
+
+const LoadingSpinner: React.FC = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-4 border-purple-500 mx-auto"></div>
+            <p className="mt-4 text-white text-lg">Loading Game...</p>
+        </div>
+    </div>
+);
 
 function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -582,83 +591,6 @@ function App() {
       ) : (
         <button onClick={() => { setShowAuth(true); setAuthMode('login'); }} className="bg-purple-600 text-white font-bold rounded-full shadow px-4 py-2 text-sm hover:bg-purple-700 transition-all">Đăng nhập / Đăng ký</button>
       )}
-      {showAuth && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-xs relative animate-pop">
-            <button className="absolute top-2 right-2 text-xl font-bold text-gray-500 hover:text-gray-700" onClick={() => { setShowAuth(false); setOtpSent(false); setAuthError(null); setAuthMessage(null); }}>&times;</button>
-            <div className="mb-4 flex gap-2 justify-center">
-              <button onClick={() => { setAuthMode('login'); setAuthError(null); setAuthMessage(null); }} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='login' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng nhập</button>
-              <button onClick={() => { setAuthMode('register'); setAuthError(null); setAuthMessage(null); setOtpSent(false); }} className={`px-3 py-1 rounded-full font-bold text-sm ${authMode==='register' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Đăng ký</button>
-            </div>
-            {authMessage && <div className="text-green-600 text-xs mb-2 text-center">{authMessage}</div>}
-            {authError && <div className="text-red-500 text-xs text-center mb-2">{authError}</div>}
-            
-            {authMode === 'login' ? (
-              <form onSubmit={handleLogin} className="space-y-3">
-                <input name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng nhập</button>
-                <div className="relative my-3">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="bg-white px-2 text-gray-500">Hoặc</span>
-                  </div>
-                </div>
-                <a 
-                  href="/api/auth/google" 
-                  className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 transform hover:scale-[1.02] shadow-sm hover:shadow-md"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 48 48">
-                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.42-4.55H24v8.51h12.8c-.57 5.4-4.5 9.4-9.8 9.4-6.1 0-11.05-4.95-11.05-11.05s4.95-11.05 11.05-11.05c3.45 0 6.33 1.4 8.29 3.25l6.02-6.02C36.33 3.33 30.65 0 24 0 10.75 0 0 10.75 0 24s10.75 24 24 24c13.01 0 23.4-10.08 23.4-23.45 0-.5-.04-.98-.1-1.45z"></path>
-                  </svg>
-                  <span className="text-sm font-medium text-gray-700">Đăng nhập với Google</span>
-                </a>
-              </form>
-            ) : (
-              <form onSubmit={handleRegister} className="space-y-3">
-                <input id="reg-username" name="username" required placeholder="Tên đăng nhập" className="w-full border rounded px-3 py-2" />
-                <div className="flex items-center gap-2">
-                  <input id="reg-email" name="email" type="email" required placeholder="Email" className="w-full border rounded px-3 py-2" />
-                  <button 
-                    type="button" 
-                    onClick={handleSendOtp}
-                    disabled={otpCooldown > 0}
-                    className="text-xs text-white font-bold rounded px-2 py-1 whitespace-nowrap bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  >
-                    {otpCooldown > 0 ? `Gửi lại (${otpCooldown}s)` : 'Gửi mã'}
-                  </button>
-                </div>
-                 {otpSent && (
-                  <input name="otp" required placeholder="Mã OTP 6 số" className="w-full border rounded px-3 py-2" maxLength={6} />
-                )}
-                <input name="password" type="password" required placeholder="Mật khẩu" className="w-full border rounded px-3 py-2" />
-                <button type="submit" className="w-full bg-purple-600 text-white font-bold rounded py-2 hover:bg-purple-700 transition">Đăng ký</button>
-                <div className="relative my-3">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="bg-white px-2 text-gray-500">Hoặc</span>
-                  </div>
-                </div>
-                <a 
-                  href="/api/auth/google" 
-                  className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 transform hover:scale-[1.02] shadow-sm hover:shadow-md"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 48 48">
-                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.42-4.55H24v8.51h12.8c-.57 5.4-4.5 9.4-9.8 9.4-6.1 0-11.05-4.95-11.05-11.05s4.95-11.05 11.05-11.05c3.45 0 6.33 1.4 8.29 3.25l6.02-6.02C36.33 3.33 30.65 0 24 0 10.75 0 0 10.75 0 24s10.75 24 24 24c13.01 0 23.4-10.08 23.4-23.45 0-.5-.04-.98-.1-1.45z"></path>
-                  </svg>
-                  <span className="text-sm font-medium text-gray-700">Đăng ký với Google</span>
-                </a>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 
@@ -666,6 +598,20 @@ function App() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center p-4">
         {renderAuthButton()}
+        {showAuth && (
+            <Auth
+                authMode={authMode}
+                setAuthMode={(mode) => { setAuthMode(mode); setAuthError(null); setAuthMessage(null); if (mode === 'register') setOtpSent(false); }}
+                authMessage={authMessage}
+                authError={authError}
+                handleLogin={handleLogin}
+                handleRegister={handleRegister}
+                handleSendOtp={handleSendOtp}
+                otpSent={otpSent}
+                otpCooldown={otpCooldown}
+                onClose={() => { setShowAuth(false); setOtpSent(false); setAuthError(null); setAuthMessage(null); }}
+            />
+        )}
         <div className="w-full max-w-2xl mx-auto flex flex-col md:flex-row gap-8 items-start justify-center">
           <div className="flex-1 w-full max-w-md">
             <DifficultySelector onStartGame={handleStartGame} />
@@ -683,177 +629,50 @@ function App() {
   }
 
   if (!gameState) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-4 border-purple-500 mx-auto"></div>
-          <p className="mt-4 text-white text-lg">Generating puzzle...</p>
-        </div>
-      </div>
-    );
+     return <LoadingSpinner />;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-1 sm:p-2">
+    <Suspense fallback={<LoadingSpinner />}>
       {renderAuthButton()}
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-2 sm:mb-4">
-          <h1 className="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent mb-1 sm:mb-2">
-            Sudoku Master
-          </h1>
-          <p className="text-gray-300 text-base sm:text-lg">Challenge your mind with beautiful puzzles</p>
-          <div className="mt-2 text-yellow-300 font-bold text-lg sm:text-xl">Liên tiếp đúng: {points}</div>
-          <div className="mt-1 text-green-300 font-bold text-base sm:text-lg">Điểm: {score}</div>
-        </div>
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-6 xl:items-start">
-          {/* Left Side: Leaderboard and Game Controls */}
-          <div className="xl:order-1 mb-2 xl:mb-0 h-full flex flex-col justify-between">
-            <div className="flex-grow">
-              {loadingLeaderboard ? (
-                <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
-              ) : (
-                <Leaderboard leaderboard={leaderboard} userRank={userRank} />
-              )}
-            </div>
-            <GameControls
-              elapsedTime={gameState.elapsedTime}
-              mistakes={gameState.mistakes}
-              hintsUsed={gameState.hintsUsed}
-              maxHints={maxHints}
-              isPaused={gameState.isPaused}
-              isCompleted={gameState.isCompleted}
-              difficulty={gameState.difficulty}
-              onPauseToggle={handlePauseToggle}
-              onRestart={handleRestart}
-              onHint={handleHint}
-              onNewGame={handleNewGame}
+       {showAuth && (
+            <Auth
+                authMode={authMode}
+                setAuthMode={(mode) => { setAuthMode(mode); setAuthError(null); setAuthMessage(null); if (mode === 'register') setOtpSent(false); }}
+                authMessage={authMessage}
+                authError={authError}
+                handleLogin={handleLogin}
+                handleRegister={handleRegister}
+                handleSendOtp={handleSendOtp}
+                otpSent={otpSent}
+                otpCooldown={otpCooldown}
+                onClose={() => { setShowAuth(false); setOtpSent(false); setAuthError(null); setAuthMessage(null); }}
             />
-          </div>
-          {/* Sudoku Grid - Center */}
-          <div className="xl:col-span-2 xl:order-2 mb-2 xl:mb-0 flex items-center justify-center">
-            {gameState.isPaused ? (
-              <div className="bg-white/95 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-6 sm:p-12 text-center border border-white/20">
-                <h2 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2 sm:mb-4">Game Paused</h2>
-                <p className="text-gray-600 mb-4 sm:mb-8 text-base sm:text-lg">Take a break and come back when you're ready!</p>
-                <button
-                  onClick={handlePauseToggle}
-                  className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-2 sm:py-4 px-4 sm:px-8 rounded-xl sm:rounded-2xl hover:from-green-600 hover:to-green-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
-                >
-                  Resume Game
-                </button>
-              </div>
-            ) : (
-              <SudokuGrid
-                grid={gameState.grid}
-                selectedCell={gameState.selectedCell}
-                onCellClick={handleCellClick}
-                selectedNumber={selectedNumber}
-              />
-            )}
-          </div>
-          {/* Right Side: Number Pad Only */}
-          <div className="xl:order-3 h-full flex items-center justify-center">
-            {!gameState.isPaused && (
-                <NumberPad
-                  onNumberClick={handleNumberClick}
-                  onEraseClick={handleErase}
-                  onNotesToggle={handleNotesToggle}
-                  isNotesMode={gameState.isNotesMode}
-                  selectedCell={gameState.selectedCell}
-                  onPadNumberSelect={handlePadNumberSelect}
-                />
-            )}
-          </div>
-        </div>
-      </div>
-      {gameState.isCompleted && (
-        <WinDialog
-          elapsedTime={gameState.elapsedTime}
-          mistakes={gameState.mistakes}
-          hintsUsed={gameState.hintsUsed}
-          difficulty={gameState.difficulty}
-          onNewGame={handleNewGame}
-          onPlayAgain={handleRestart}
-        />
-      )}
-      {/* Nút và popup luật chơi & Hướng dẫn */}
-      <div className="fixed bottom-2 right-2 z-50 flex flex-col items-end gap-2">
-        <button
-          className="bg-sky-600 text-white font-bold rounded-full shadow-lg px-4 py-2 text-sm hover:bg-sky-700 transition-all"
-          onClick={() => setShowHowToPlay(true)}
-        >
-          Hướng dẫn chơi
-        </button>
-        <button
-          className="bg-purple-600 text-white font-bold rounded-full shadow-lg px-4 py-2 text-sm hover:bg-purple-700 transition-all"
-          onClick={() => setShowRules(true)}
-        >
-          Luật chơi
-        </button>
-      </div>
-
-      {/* Popup Hướng dẫn chơi */}
-      {showHowToPlay && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-md relative animate-pop">
-            <button className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-xl font-bold text-gray-700 shadow" onClick={() => setShowHowToPlay(false)}>&times;</button>
-            <div className="font-bold text-lg text-purple-700 mb-3 text-center">Hướng Dẫn Cho Người Mới Bắt Đầu</div>
-            <div className="text-sm text-gray-800 space-y-3">
-              <p>Chào mừng bạn đến với Sudoku! Đây là một trò chơi giải đố logic rất thú vị. Mục tiêu của bạn rất đơn giản: <strong>lấp đầy tất cả các ô trống bằng các số từ 1 đến 9.</strong></p>
-              <div>
-                <p className="font-bold mb-1">Chỉ cần nhớ 3 quy tắc VÀNG:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Số bạn điền không được trùng với bất kỳ số nào trên cùng <strong>HÀNG NGANG</strong>.</li>
-                  <li>Số bạn điền không được trùng với bất kỳ số nào trên cùng <strong>CỘT DỌC</strong>.</li>
-                  <li>Số bạn điền không được trùng với bất kỳ số nào trong cùng <strong>Ô VUÔNG LỚN (3x3)</strong>.</li>
-                </ul>
-              </div>
-              <div>
-                <p className="font-bold mb-1">Mẹo chơi cực dễ:</p>
-                 <ul className="list-disc pl-5 space-y-1">
-                  <li><strong>Bắt đầu từ nơi dễ nhất:</strong> Tìm những hàng, cột, hoặc ô vuông lớn đã có nhiều số nhất. Việc tìm ra số còn thiếu sẽ dễ dàng hơn rất nhiều!</li>
-                  <li><strong>Dùng Ghi Chú (Notes):</strong> Nếu chưa chắc chắn về một ô, hãy bật chế độ "Notes" và điền những con số bạn đang phân vân vào đó. Đây là cách các cao thủ sử dụng để loại trừ và tìm ra đáp án đúng.</li>
-                </ul>
-              </div>
-              <p className="text-center font-semibold pt-2">Chúc bạn có những giờ phút giải đố vui vẻ!</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Popup Luật chơi */}
-      {showRules && (
-         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90vw] max-w-sm relative animate-pop">
-            <button className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-xl font-bold text-gray-700 shadow" onClick={() => setShowRules(false)}>&times;</button>
-            <div className="font-bold text-lg text-purple-700 mb-3 text-center">Quy Tắc Tính Điểm</div>
-            <div className="text-sm text-gray-800 space-y-3">
-              <div>
-                <p className="font-semibold text-green-600 mb-1">⭐ Điểm Thưởng:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Mỗi lần bạn điền đúng một số, bạn sẽ nhận được điểm.</li>
-                  <li><strong>Combo Thưởng:</strong> Điền đúng liên tiếp nhiều số sẽ giúp bạn nhận được điểm thưởng nhân lên, càng về sau điểm càng cao!</li>
-                </ul>
-              </div>
-               <div>
-                <p className="font-semibold text-red-600 mb-1">💔 Mất Điểm:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Mỗi lần điền sai, bạn sẽ bị trừ một chút điểm. Đừng lo, điểm của bạn sẽ không bao giờ bị âm.</li>
-                </ul>
-              </div>
-              <div>
-                <p className="font-semibold text-yellow-600 mb-1">💡 Dùng Gợi Ý (Hint):</p>
-                <ul className="list-disc pl-5 space-y-1">
-                    <li>Sử dụng "Hint" sẽ không được cộng điểm cho ô đó.</li>
-                    <li>Số lượt "Hint" là có hạn tùy theo độ khó bạn chọn.</li>
-                </ul>
-              </div>
-              <p className="text-center font-semibold pt-2">Hãy chơi thật chiến lược để đạt điểm cao nhất nhé!</p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      <GameUI
+        gameState={gameState}
+        points={points}
+        score={score}
+        maxHints={maxHints}
+        loadingLeaderboard={loadingLeaderboard}
+        leaderboard={leaderboard}
+        userRank={userRank}
+        selectedNumber={selectedNumber}
+        handlePauseToggle={handlePauseToggle}
+        handleRestart={handleRestart}
+        handleHint={handleHint}
+        handleNewGame={handleNewGame}
+        handleCellClick={handleCellClick}
+        handleNumberClick={handleNumberClick}
+        handleErase={handleErase}
+        handleNotesToggle={handleNotesToggle}
+        handlePadNumberSelect={handlePadNumberSelect}
+        setShowHowToPlay={setShowHowToPlay}
+        setShowRules={setShowRules}
+      />
+      {showHowToPlay && <HowToPlayPopup onClose={() => setShowHowToPlay(false)} />}
+      {showRules && <RulesPopup onClose={() => setShowRules(false)} />}
+    </Suspense>
   );
 }
 
