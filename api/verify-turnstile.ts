@@ -30,8 +30,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body.remoteip = Array.isArray(ip) ? ip[0] : ip;
     }
 
-    console.log('Sending JSON to Cloudflare via axios:', body);
-
     const response = await axios.post(
       'https://challenges.cloudflare.com/turnstile/v2/siteverify',
       body,
@@ -39,7 +37,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
 
     const data = response.data;
-    console.log('Cloudflare raw response:', data);
 
     if (data.success) {
       return res.status(200).json({ success: true, message: 'Human verification successful.' });
