@@ -51,9 +51,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: formData.toString(),
     });
 
-    const turnstileData: { success: boolean } = await turnstileResponse.json();
-    if (!turnstileData.success) {
-      return res.status(401).json({ error: 'Xác thực người dùng thất bại.' });
+    const responseText = await turnstileResponse.text();
+    console.log('OTP Cloudflare raw response:', responseText);
+
+    if (!turnstileResponse.ok) {
+      console.error(`OTP Cloudflare API returned status: ${turnstileResponse.status}`);
+      return res.status(500).json({ error: 'Failed to communicate with Cloudflare for OTP.' });
+    }
+    
+    try {
+      const turnstileData: { success: boolean } = JSON.parse(responseText);
+      if (!turnstileData.success) {
+        return res.status(401).json({ error: 'Xác thực người dùng thất bại.' });
+      }
+    } catch (e) {
+      console.error('Failed to parse OTP JSON response from Cloudflare.', e);
+      return res.status(500).json({ error: 'Invalid response from Cloudflare for OTP.' });
     }
   } catch (error) {
     console.error('Turnstile verification error in send-otp:', error);

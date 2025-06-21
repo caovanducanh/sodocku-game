@@ -36,12 +36,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: formData.toString(),
     });
 
-    const data: { success: boolean; 'error-codes'?: string[] } = await response.json();
+    const responseText = await response.text();
+    console.log('Cloudflare raw response:', responseText);
 
-    if (data.success) {
-      return res.status(200).json({ success: true, message: 'Human verification successful.' });
-    } else {
-      return res.status(400).json({ success: false, error: 'Failed human verification.', 'error-codes': data['error-codes'] });
+    if (!response.ok) {
+        console.error(`Cloudflare API returned status: ${response.status}`);
+        return res.status(500).json({ error: 'Failed to communicate with Cloudflare.' });
+    }
+
+    try {
+        const data: { success: boolean; 'error-codes'?: string[] } = JSON.parse(responseText);
+
+        if (data.success) {
+          return res.status(200).json({ success: true, message: 'Human verification successful.' });
+        } else {
+          console.error('Turnstile verification failed with error codes:', data['error-codes']);
+          return res.status(400).json({ success: false, error: 'Failed human verification.', 'error-codes': data['error-codes'] });
+        }
+    } catch (e) {
+        console.error('Failed to parse JSON response from Cloudflare.', e);
+        return res.status(500).json({ error: 'Invalid response from Cloudflare.' });
     }
   } catch (error) {
     console.error('Turnstile verification error:', error);
