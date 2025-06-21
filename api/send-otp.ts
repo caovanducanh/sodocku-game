@@ -36,18 +36,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const ip = req.headers['x-forwarded-for'];
-    const formData = new URLSearchParams();
-    formData.append('secret', TURNSTILE_SECRET_KEY);
-    formData.append('response', turnstileToken);
+    const body: { secret: string; response: string; remoteip?: string } = {
+      secret: TURNSTILE_SECRET_KEY,
+      response: turnstileToken,
+    };
     if (ip) {
-      formData.append('remoteip', Array.isArray(ip) ? ip[0] : ip);
+      body.remoteip = Array.isArray(ip) ? ip[0] : ip;
     }
-
-    console.log('OTP Sending to Cloudflare:', formData.toString()); // Log the body
+    
+    console.log('OTP Sending JSON to Cloudflare:', JSON.stringify(body));
 
     const turnstileResponse = await fetch('https://challenges.cloudflare.com/turnstile/v2/siteverify', {
-      method: 'POST',
-      body: formData,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
     });
 
     const responseText = await turnstileResponse.text();
