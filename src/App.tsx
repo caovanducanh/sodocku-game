@@ -518,10 +518,10 @@ function App() {
           <div className="mt-2 text-yellow-300 font-bold text-lg sm:text-xl">Liên tiếp đúng: {points}</div>
           <div className="mt-1 text-green-300 font-bold text-base sm:text-lg">Điểm: {score}</div>
         </div>
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-8 xl:items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-6 xl:items-start">
           {/* Left Side: Leaderboard and Game Controls */}
           <div className="xl:order-1 mb-2 xl:mb-0">
-            <div className="mb-6">
+            <div className="mb-4">
               {loadingLeaderboard ? (
                 <div className="text-center text-gray-400 py-6 min-h-[260px]">Đang tải bảng xếp hạng...</div>
               ) : (

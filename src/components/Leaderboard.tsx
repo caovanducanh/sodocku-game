@@ -1,4 +1,5 @@
 import React from 'react';
+import { Crown } from 'lucide-react';
 
 interface LeaderboardEntry {
   username: string;
@@ -11,6 +12,13 @@ interface LeaderboardProps {
 }
 
 const Leaderboard: React.FC<LeaderboardProps> = ({ leaderboard, userRank }) => {
+  const getCrown = (rank: number) => {
+    if (rank === 1) return <Crown size={16} className="text-yellow-400 fill-yellow-400" />;
+    if (rank === 2) return <Crown size={16} className="text-gray-400 fill-gray-400" />;
+    if (rank === 3) return <Crown size={16} className="text-orange-400 fill-orange-400" />;
+    return null;
+  };
+
   return (
     <div className="overflow-x-auto w-full">
       <h2 className="text-xl font-bold text-purple-700 mb-2 text-center">Bảng xếp hạng</h2>
@@ -31,7 +39,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ leaderboard, userRank }) => {
           {leaderboard && leaderboard.length > 0 ? leaderboard.map((entry, idx) => (
             <tr key={entry.username + entry.score} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
               <td className="py-1 px-2 text-sm font-bold text-purple-600">{idx + 1}</td>
-              <td className="py-1 px-2 text-sm">{entry.username}</td>
+              <td className="py-1 px-2 text-sm">
+                <div className="flex items-center gap-2">
+                  {getCrown(idx + 1)}
+                  <span>{entry.username}</span>
+                </div>
+              </td>
               <td className="py-1 px-2 text-sm">{entry.score}</td>
             </tr>
           )) : (
