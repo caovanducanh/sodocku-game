@@ -48,7 +48,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const turnstileResponse = await axios.post(
       'https://challenges.cloudflare.com/turnstile/v2/siteverify',
       body,
-      { headers: { 'Content-Type': 'application/json' } }
+      { 
+        headers: { 'Content-Type': 'application/json' },
+        maxRedirects: 0,
+      }
     );
 
     const turnstileData = turnstileResponse.data;
