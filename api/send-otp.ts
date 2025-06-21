@@ -36,22 +36,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Server configuration error.' });
     }
 
-    const ip = req.headers['x-forwarded-for'];
-    const body: { secret: string; response: string; remoteip?: string } = {
-      secret: TURNSTILE_SECRET_KEY,
-      response: turnstileToken,
-    };
-    if (ip) {
-      body.remoteip = Array.isArray(ip) ? ip[0] : ip;
-    }
+    const params = new URLSearchParams();
+    params.append('secret', TURNSTILE_SECRET_KEY);
+    params.append('response', turnstileToken);
     
     const turnstileResponse = await axios.post(
       'https://challenges.cloudflare.com/turnstile/v2/siteverify',
-      body,
-      { 
-        headers: { 'Content-Type': 'application/json' },
-        maxRedirects: 0,
-      }
+      params
     );
 
     const turnstileData = turnstileResponse.data;

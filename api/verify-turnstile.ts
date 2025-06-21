@@ -20,25 +20,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const ip = req.headers['x-forwarded-for'];
-    
-    const body: { secret: string; response: string; remoteip?: string } = {
-      secret: TURNSTILE_SECRET_KEY,
-      response: token,
-    };
-    if (ip) {
-      body.remoteip = Array.isArray(ip) ? ip[0] : ip;
-    }
-
-    console.log('Sending JSON to Cloudflare via axios:', body);
+    const params = new URLSearchParams();
+    params.append('secret', TURNSTILE_SECRET_KEY);
+    params.append('response', token);
+    // Not sending remoteip as a final troubleshooting step.
 
     const response = await axios.post(
       'https://challenges.cloudflare.com/turnstile/v2/siteverify',
-      body,
-      { 
-        headers: { 'Content-Type': 'application/json' },
-        maxRedirects: 0,
-      }
+      params
     );
 
     const data = response.data;
