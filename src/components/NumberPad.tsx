@@ -26,11 +26,11 @@ const NumberPad: React.FC<NumberPadProps> = memo(({
   };
 
   return (
-    <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-2 sm:p-4 border border-gray-200 w-full max-w-xs mx-auto">
-      <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-2 sm:mb-4 text-center">Bàn phím số</h3>
+    <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-2 sm:p-4 md:p-6 border border-gray-200 max-w-full">
+      <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-2 sm:mb-4 text-center">Number Pad</h3>
       
       {/* Number Grid */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
         {numbers.map((number) => (
           <motion.button
             {...buttonProps}
@@ -45,7 +45,7 @@ const NumberPad: React.FC<NumberPadProps> = memo(({
             }}
             onContextMenu={onPadNumberSelect ? (e) => { e.preventDefault(); onPadNumberSelect(number); } : undefined}
             disabled={!selectedCell}
-            className={`aspect-square rounded-xl sm:rounded-2xl font-bold text-xl sm:text-2xl transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg select-none ${
+            className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl font-bold text-xl sm:text-2xl transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg select-none ${
               selectedCell
                 ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 hover:shadow-xl active:scale-95'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -57,32 +57,32 @@ const NumberPad: React.FC<NumberPadProps> = memo(({
       </div>
       
       {/* Control Buttons */}
-      <div className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         <motion.button
           {...buttonProps}
           onClick={onEraseClick}
           disabled={!selectedCell}
-          className={`w-full flex items-center justify-center gap-2 py-2 sm:py-3 rounded-xl sm:rounded-2xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg select-none ${
+          className={`w-full flex items-center justify-center gap-2 h-10 sm:h-12 rounded-xl sm:rounded-2xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg select-none ${
             selectedCell
               ? 'bg-gradient-to-br from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 hover:shadow-xl active:scale-95'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}
         >
           <Eraser size={20} />
-          Xóa
+          Erase
         </motion.button>
         
         <motion.button
           {...buttonProps}
           onClick={onNotesToggle}
-          className={`w-full flex items-center justify-center gap-2 py-2 sm:py-3 rounded-xl sm:rounded-2xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg select-none ${
+          className={`w-full flex items-center justify-center gap-2 h-10 sm:h-12 rounded-xl sm:rounded-2xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-md sm:shadow-lg select-none ${
             isNotesMode
               ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-xl'
               : 'bg-gradient-to-br from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 hover:shadow-xl active:scale-95'
           }`}
         >
           <Edit3 size={20} />
-          {isNotesMode ? 'Ghi chú BẬT' : 'Ghi chú TẮT'}
+          {isNotesMode ? 'Notes ON' : 'Notes OFF'}
         </motion.button>
       </div>
       

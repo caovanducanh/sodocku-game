@@ -24,15 +24,12 @@ const renderNotes = (notes: Set<number>) => {
 };
 
 const getCellClassName = (row: number, col: number, cell: SudokuCell, selectedCell: { row: number; col: number } | null, selectedNumber?: number | null) => {
-  let className = 'aspect-square border border-gray-300 flex items-center justify-center text-lg sm:text-2xl md:text-3xl font-bold cursor-pointer transition-all duration-200 relative select-none shadow-sm';
-  
-  const thickBorderStyle = 'border-2 sm:border-4';
+  let className = 'w-9 h-9 sm:w-12 sm:h-12 md:w-14 md:h-14 border border-gray-300 flex items-center justify-center text-base sm:text-lg md:text-xl font-bold cursor-pointer transition-all duration-200 relative select-none rounded-lg md:rounded-2xl shadow-sm md:shadow-lg';
+  if (row % 3 === 0) className += ' border-t-4 border-t-gray-800';
+  if (col % 3 === 0) className += ' border-l-4 border-l-gray-800';
+  if (row === 8) className += ' border-b-4 border-b-gray-800';
+  if (col === 8) className += ' border-r-4 border-r-gray-800';
 
-  if (row % 3 === 0) className += ` border-t-gray-800 ${thickBorderStyle}`;
-  if (col % 3 === 0) className += ` border-l-gray-800 ${thickBorderStyle}`;
-  if (row === 8) className += ` border-b-gray-800 ${thickBorderStyle}`;
-  if (col === 8) className += ` border-r-gray-800 ${thickBorderStyle}`;
-  
   if (cell.isError) {
     className += ' bg-gradient-to-br from-red-100 to-red-200 text-red-700 border-red-300';
   } else if (selectedCell?.row === row && selectedCell?.col === col) {
@@ -80,23 +77,21 @@ interface SudokuGridProps {
 
 const SudokuGrid: React.FC<SudokuGridProps> = memo(({ grid, selectedCell, onCellClick, selectedNumber }) => {
   return (
-    <div className="w-full max-w-md sm:max-w-lg mx-auto p-1 sm:p-2">
-      <div className="bg-white rounded-xl md:rounded-2xl shadow-2xl p-1 sm:p-2 border border-gray-200">
-        <div className="grid grid-cols-9 gap-px sm:gap-[2px] bg-gray-800 rounded-lg md:rounded-xl overflow-hidden shadow-inner">
-          {grid.map((row, rowIndex) =>
-            row.map((cell, colIndex) => (
-              <Cell
-                key={`${rowIndex}-${colIndex}`}
-                cell={cell}
-                row={rowIndex}
-                col={colIndex}
-                selectedCell={selectedCell}
-                selectedNumber={selectedNumber}
-                onCellClick={onCellClick}
-              />
-            ))
-          )}
-        </div>
+    <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-2 sm:p-4 md:p-6 border border-gray-200 max-w-full overflow-x-auto">
+      <div className="grid grid-cols-9 gap-[2px] border-4 border-gray-800 rounded-xl md:rounded-2xl overflow-hidden shadow-inner">
+        {grid.map((row, rowIndex) =>
+          row.map((cell, colIndex) => (
+            <Cell
+              key={`${rowIndex}-${colIndex}`}
+              cell={cell}
+              row={rowIndex}
+              col={colIndex}
+              selectedCell={selectedCell}
+              selectedNumber={selectedNumber}
+              onCellClick={onCellClick}
+            />
+          ))
+        )}
       </div>
     </div>
   );
