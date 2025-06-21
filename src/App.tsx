@@ -507,10 +507,10 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-1 sm:p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-1 sm:p-2">
       {renderAuthButton()}
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-4 sm:mb-8">
+        <div className="text-center mb-2 sm:mb-4">
           <h1 className="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent mb-1 sm:mb-2">
             Sudoku Master
           </h1>
