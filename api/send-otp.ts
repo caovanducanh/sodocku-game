@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { redis } from './redis';
 import nodemailer from 'nodemailer';
+import axios from 'axios';
 
 const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -36,41 +37,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const ip = req.headers['x-forwarded-for'];
-    const body: { secret: string; response: string; remoteip?: string } = {
-      secret: TURNSTILE_SECRET_KEY,
-      response: turnstileToken,
-    };
+    const params = new URLSearchParams();
+    params.append('secret', TURNSTILE_SECRET_KEY);
+    params.append('response', turnstileToken);
     if (ip) {
-      body.remoteip = Array.isArray(ip) ? ip[0] : ip;
+      params.append('remoteip', Array.isArray(ip) ? ip[0] : ip);
     }
     
-    console.log('OTP Sending JSON to Cloudflare:', JSON.stringify(body));
+    const turnstileResponse = await axios.post(
+      'https://challenges.cloudflare.com/turnstile/v2/siteverify',
+      params
+    );
 
-    const turnstileResponse = await fetch('https://challenges.cloudflare.com/turnstile/v2/siteverify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-    });
-
-    const responseText = await turnstileResponse.text();
-    console.log('OTP Cloudflare raw response:', responseText);
-
-    if (!turnstileResponse.ok) {
-      console.error(`OTP Cloudflare API returned status: ${turnstileResponse.status}`);
-      return res.status(500).json({ error: 'Failed to communicate with Cloudflare for OTP.' });
-    }
-    
-    try {
-      const turnstileData: { success: boolean } = JSON.parse(responseText);
-      if (!turnstileData.success) {
-        return res.status(401).json({ error: 'Xác thực người dùng thất bại.' });
-      }
-    } catch (e) {
-      console.error('Failed to parse OTP JSON response from Cloudflare.', e);
-      return res.status(500).json({ error: 'Invalid response from Cloudflare for OTP.' });
+    const turnstileData = turnstileResponse.data;
+    if (!turnstileData.success) {
+      return res.status(401).json({ error: 'Xác thực người dùng thất bại.' });
     }
   } catch (error) {
-    console.error('Turnstile verification error in send-otp:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error during OTP Turnstile verification:', error.response?.status, error.response?.data);
+    } else {
+      console.error('Generic error during OTP Turnstile verification:', error);
+    }
     return res.status(500).json({ error: 'Lỗi server khi xác thực người dùng.' });
   }
   // --- End Turnstile Verification ---

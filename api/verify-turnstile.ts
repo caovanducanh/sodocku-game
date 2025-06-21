@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import axios from 'axios';
 
 const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
 
@@ -21,45 +22,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const ip = req.headers['x-forwarded-for'];
     
-    const body: { secret: string; response: string; remoteip?: string } = {
-      secret: TURNSTILE_SECRET_KEY,
-      response: token,
-    };
+    const params = new URLSearchParams();
+    params.append('secret', TURNSTILE_SECRET_KEY);
+    params.append('response', token);
     if (ip) {
-      body.remoteip = Array.isArray(ip) ? ip[0] : ip;
+      params.append('remoteip', Array.isArray(ip) ? ip[0] : ip);
     }
 
-    console.log('Sending JSON to Cloudflare:', JSON.stringify(body));
+    console.log('Sending form-data to Cloudflare via axios:', params.toString());
 
-    const response = await fetch('https://challenges.cloudflare.com/turnstile/v2/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    const response = await axios.post(
+      'https://challenges.cloudflare.com/turnstile/v2/siteverify',
+      params
+    );
 
-    const responseText = await response.text();
-    console.log('Cloudflare raw response:', responseText);
+    const data = response.data;
+    console.log('Cloudflare raw response:', data);
 
-    if (!response.ok) {
-        console.error(`Cloudflare API returned status: ${response.status}`);
-        return res.status(500).json({ error: 'Failed to communicate with Cloudflare.' });
-    }
-
-    try {
-        const data: { success: boolean; 'error-codes'?: string[] } = JSON.parse(responseText);
-
-        if (data.success) {
-          return res.status(200).json({ success: true, message: 'Human verification successful.' });
-        } else {
-          console.error('Turnstile verification failed with error codes:', data['error-codes']);
-          return res.status(400).json({ success: false, error: 'Failed human verification.', 'error-codes': data['error-codes'] });
-        }
-    } catch (e) {
-        console.error('Failed to parse JSON response from Cloudflare.', e);
-        return res.status(500).json({ error: 'Invalid response from Cloudflare.' });
+    if (data.success) {
+      return res.status(200).json({ success: true, message: 'Human verification successful.' });
+    } else {
+      console.error('Turnstile verification failed with error codes:', data['error-codes']);
+      return res.status(400).json({ success: false, error: 'Failed human verification.', 'error-codes': data['error-codes'] });
     }
   } catch (error) {
-    console.error('Turnstile verification error:', error);
+    if (axios.isAxiosError(error)) {
+        console.error('Axios error during Turnstile verification:', error.response?.status, error.response?.data);
+    } else {
+        console.error('Generic error during Turnstile verification:', error);
+    }
     return res.status(500).json({ error: 'Server error during verification.' });
   }
 } 
