@@ -37,6 +37,42 @@ function App() {
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
+  const [isBlocked, setIsBlocked] = useState(false);
+
+  // Anti F5-spam
+  useEffect(() => {
+    const F5_SPAM_THRESHOLD_MS = 2000; // 2 seconds between refreshes
+    const F5_SPAM_MAX_ATTEMPTS = 5; // after 5 quick refreshes, block
+    const F5_BLOCK_DURATION_MS = 10000; // block for 10 seconds
+
+    const now = Date.now();
+    const lastRefreshStr = localStorage.getItem('sudoku-last-refresh');
+    const refreshCountStr = localStorage.getItem('sudoku-refresh-count');
+
+    const lastRefresh = lastRefreshStr ? parseInt(lastRefreshStr, 10) : 0;
+    let refreshCount = refreshCountStr ? parseInt(refreshCountStr, 10) : 1;
+
+    if (now - lastRefresh < F5_SPAM_THRESHOLD_MS) {
+      // It's a quick refresh
+      refreshCount++;
+    } else {
+      // It's a normal refresh or first visit, reset the counter
+      refreshCount = 1;
+    }
+
+    localStorage.setItem('sudoku-last-refresh', now.toString());
+    localStorage.setItem('sudoku-refresh-count', refreshCount.toString());
+
+    if (refreshCount >= F5_SPAM_MAX_ATTEMPTS) {
+      console.warn(`Rapid refresh detected. Blocking for ${F5_BLOCK_DURATION_MS / 1000} seconds.`);
+      setIsBlocked(true);
+      // After the block duration, unblock and reset the counter.
+      setTimeout(() => {
+        setIsBlocked(false);
+        localStorage.removeItem('sudoku-refresh-count');
+      }, F5_BLOCK_DURATION_MS);
+    }
+  }, []);
 
   const getBasePoint = (difficulty: Difficulty) => {
     switch (difficulty) {
@@ -593,6 +629,19 @@ function App() {
       )}
     </div>
   );
+
+  if (isBlocked) {
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-red-800 via-red-900 to-black flex flex-col items-center justify-center p-4 text-white text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-24 w-24 mb-4 text-yellow-300 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h1 className="text-3xl sm:text-4xl font-bold mb-4">Bạn đang tải lại trang quá nhanh!</h1>
+            <p className="text-base sm:text-lg">Hệ thống đã tạm thời giới hạn quyền truy cập của bạn để đảm bảo ổn định.</p>
+            <p className="text-base sm:text-lg">Vui lòng đợi một lát trước khi thử lại.</p>
+        </div>
+    );
+  }
 
   if (showDifficultySelector) {
     return (
