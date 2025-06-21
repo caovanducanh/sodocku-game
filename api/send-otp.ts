@@ -29,14 +29,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // --- Verify Turnstile Token ---
   try {
+    const ip = req.headers['x-forwarded-for'];
+    const formData = new URLSearchParams();
+    formData.append('secret', process.env.TURNSTILE_SECRET_KEY!);
+    formData.append('response', turnstileToken);
+    if (ip) {
+      formData.append('remoteip', Array.isArray(ip) ? ip[0] : ip);
+    }
+
     const turnstileResponse = await fetch('https://challenges.cloudflare.com/turnstile/v2/siteverify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        secret: process.env.TURNSTILE_SECRET_KEY,
-        response: turnstileToken,
-      }),
+      body: formData,
     });
+
     const turnstileData: { success: boolean } = await turnstileResponse.json();
     if (!turnstileData.success) {
       return res.status(401).json({ error: 'Xác thực người dùng thất bại.' });

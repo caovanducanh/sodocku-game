@@ -14,15 +14,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const ip = req.headers['x-forwarded-for'];
+    
+    const formData = new URLSearchParams();
+    formData.append('secret', TURNSTILE_SECRET_KEY!);
+    formData.append('response', token);
+    if (ip) {
+      formData.append('remoteip', Array.isArray(ip) ? ip[0] : ip);
+    }
+
     const response = await fetch('https://challenges.cloudflare.com/turnstile/v2/siteverify', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        secret: TURNSTILE_SECRET_KEY,
-        response: token,
-      }),
+      body: formData,
     });
 
     const data: { success: boolean; 'error-codes'?: string[] } = await response.json();
